@@ -1,5 +1,6 @@
 CPP = g++
-CPPFLAGS = -O3 -g -march=native -Wall
+CPPFLAGS = -O3 -g -march=native -Wall -pthread -std=gnu++11
+LDFLAGS = -pthread
 
 TARGET = client
 SOURCE = $(wildcard *.cpp)
@@ -17,7 +18,7 @@ default: $(TARGET)
 
 %.o: %.cpp
 	@echo "Compiling $@"
-	@$(CPP) $(CPPFLAGS) -c -o $@ $?
+	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 $(TARGET): $(OBJECTS)
 	@echo "Linking client"
