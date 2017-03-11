@@ -6,6 +6,9 @@ SOURCE = $(wildcard *.cpp)
 OBJECTS = $(SOURCE:.cpp=.o)
 DEP = $(SOURCE:.cpp=.d)
 
+default: $(TARGET)
+
+
 %.d: %.cpp
 	@echo "Creating dependency $@"
 	@$(CPP) $(CPPFLAGS) -MM -o $@ $?
@@ -14,11 +17,11 @@ DEP = $(SOURCE:.cpp=.d)
 
 %.o: %.cpp
 	@echo "Compiling $@"
-	@$(CPP) $(CPPFLAGS) -MM -o $@ $?
-
-all: $(TARGET)
+	@$(CPP) $(CPPFLAGS) -c -o $@ $?
 
 $(TARGET): $(OBJECTS)
+	@echo "Linking client"
+	@$(CPP)  $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
