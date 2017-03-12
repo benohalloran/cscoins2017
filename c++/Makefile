@@ -25,4 +25,4 @@ $(TARGET): $(OBJECTS)
 	@$(CPP) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET) $(DEP) *.ii *.s
