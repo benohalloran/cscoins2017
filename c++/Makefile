@@ -18,7 +18,7 @@ default: $(TARGET)
 
 %.o: %.cpp
 	@echo "Compiling $@"
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 $(TARGET): $(OBJECTS)
 	@echo "Linking client"
