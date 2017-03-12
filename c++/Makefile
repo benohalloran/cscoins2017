@@ -1,5 +1,5 @@
 CPP = g++
-CPPFLAGS = -O3 -g -march=native -Wall -Wextra -pthread -std=gnu++14
+CPPFLAGS = -O3 -g -march=native -flto -Wall -Wextra -pthread -std=gnu++14
 LDFLAGS = -pthread
 
 TARGET = client
