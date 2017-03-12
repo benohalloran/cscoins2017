@@ -1,6 +1,6 @@
 CPP = g++
-CPPFLAGS = -O3 -g -march=native -flto -Wall -Wextra -pthread -std=gnu++14
-LDFLAGS = -pthread
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread
+LDFLAGS = $(CPPFLAGS) -lcrypto
 
 TARGET = client
 SOURCE = $(wildcard *.cpp)
