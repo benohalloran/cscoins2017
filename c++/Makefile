@@ -22,7 +22,7 @@ default: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@echo "Linking client"
-	@$(CPP)  $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
+	@$(CPP) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
