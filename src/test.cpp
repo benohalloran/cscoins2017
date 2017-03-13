@@ -1,3 +1,5 @@
+#ifdef TESTING
+
 #include "solver.hpp"
 
 #include <iostream>
@@ -11,3 +13,5 @@ int main(int argc, char** argv)
     solution s = solve(input);
     printf("%d %u %s\n", s.id, s.nonce, s.hash);
 }
+
+#endif

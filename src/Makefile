@@ -1,5 +1,6 @@
 CC = g++
-CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread -save-temps -I ../include
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 \
+	-pthread -save-temps -I ../include -DTESTING
 LDFLAGS = $(CPPFLAGS) -lcrypto
 
 .PHONY: all clean
