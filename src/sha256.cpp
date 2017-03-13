@@ -1,16 +1,34 @@
 #include "sha256.hpp"
 
-#include <openssl/sha.h>
+static const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
+    '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-void sha256(const char *str, size_t len, char *hash)
+void hash_str(const unsigned char *hash, char *str)
 {
-    static const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
-        '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-    unsigned char buf[SHA256_DIGEST_LENGTH];
-    SHA256((const unsigned char *)str, len, buf);
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        hash[i * 2] = hex[(buf[i] & 0xf0) >> 4];
-        hash[i * 2 + 1] = hex[buf[i] & 0x0f];
+    for (unsigned int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        str[i * 2] = hex[(hash[i] & 0xf0) >> 4];
+        str[i * 2 + 1] = hex[hash[i] & 0x0f];
     }
-    hash[SHA256_DIGEST_LENGTH * 2] = '\0';
+    str[SHA256_DIGEST_LENGTH * 2] = '\0';
+}
+
+bool check_prefix(const unsigned char *hash, const char *str,
+    unsigned int len)
+{
+    for (unsigned int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        if (i * 2 + 1 >= len) {
+            if (i * 2 < len && str[i * 2] != hex[(hash[i] & 0xf0) >> 4]) {
+                return false;
+            }
+
+            return true;
+        }
+
+        if (str[i * 2] != hex[(hash[i] & 0xf0) >> 4]
+            || str[i * 2 + 1] != hex[hash[i] & 0x0f]) {
+            return false;
+        }
+    }
+
+    return true;
 }
