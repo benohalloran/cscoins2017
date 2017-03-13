@@ -13,11 +13,15 @@
 #include <thread>
 #include <vector>
 
+#include <sched.h>
+
 #define TYPE_SORTED_LIST            1
 #define TYPE_REVERSE_SORTED_LIST    2
 
 #define N_BINS 256
 #define BIN_SHIFT 56
+
+#define MAX_NONCE 100000000
 
 namespace {
 
@@ -201,7 +205,7 @@ void solve_sorted_list(const challenge &c, unsigned int start_nonce,
     }
 }
 
-void solve_(const challenge &c, unsigned int start_nonce,
+void solve(const challenge &c, unsigned int start_nonce,
     solution *s, atomic<bool> *done)
 {
     switch (c.type) {
@@ -215,14 +219,23 @@ void solve_(const challenge &c, unsigned int start_nonce,
     }
 }
 
+void set_affinity(int cpu)
+{
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(cpu, &set);
+    int ret = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+    assert(ret == 0);
+}
+
 solution solve(const challenge &c)
 {
-    const unsigned int T = thread::hardware_concurrency() / 2 - 1;
+    const unsigned int T = thread::hardware_concurrency() - 1;
 
-    if (T <= 1 || T == -1u || strlen(c.hash_prefix) <= 3) {
+    if (T == 0 || strlen(c.hash_prefix) <= 3) {
         solution s;
         atomic<bool> done {false};
-        solve_(c, 0, &s, &done);
+        solve(c, 0, &s, &done);
         return s;
     }
 
@@ -232,27 +245,24 @@ solution solve(const challenge &c)
 
     for (unsigned int i = 0; i < T; ++i) {
         dones[i] = false;
-        threads[i] = thread(solve_, c, 100000000 / T * i, &solutions[i],
-            &dones[i]);
+        threads[i] = thread([=] (const challenge &c, solution *s, atomic<bool> *done) {
+            set_affinity(i);
+            solve(c, MAX_NONCE / T * i, s, done);
+        }, c, &solutions[i], &dones[i]);
     }
+    set_affinity(T);
 
     unsigned int index;
     for (;;) {
-        bool done = false;
-
         for (unsigned int i = 0; i < T; ++i) {
             if (dones[i]) {
-                done = true;
                 index = i;
-                break;
+                goto done;
             }
-        }
-
-        if (done) {
-            break;
         }
     }
 
+done:
     for (unsigned int i = 0; i < T; ++i) {
         dones[i] = true;
         threads[i].detach();
