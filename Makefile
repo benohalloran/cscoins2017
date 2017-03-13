@@ -11,7 +11,13 @@ DEPDIR =dep
 SOURCE = $(wildcard $(SRCDIR)/*.cpp)
 OBJECTS = $(SOURCE:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 DEP = $(SOURCE:$(SRCDIR)/%.cpp=$(DEPDIR)/%.d)
-default: $(TARGET)
+default: $(OBJDIR) $(DEPDIR) $(TARGET)
+
+$(OBJDIR):
+	@mkdir -p $(OBJDIR)
+
+$(DEPDIR):
+	@mkdir -p $(DEPDIR)
 
 $(DEPDIR)/%.d: $(SRCDIR)/%.cpp
 	@echo "Creating dependency $@"
@@ -23,10 +29,10 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 $(TARGET): $(OBJECTS)
-	@mkdir -p $(OBJDIR)
 	@mkdir -p $(DEPDIR)
 	@echo "Linking client"
 	@$(CPP) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(DEP) *.ii *.s
+	rmdir $(DEPDIR) $(OBJDIR)
