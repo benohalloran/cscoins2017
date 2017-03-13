@@ -2,7 +2,7 @@ CPP = g++
 HEADERDIR = include
 CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread \
 						-I$(HEADERDIR)
-LDFLAGS = $(CPPFLAGS) -lcrypto
+LDFLAGS = $(CPPFLAGS) -lcrypto -lssl -lz
 
 TARGET = client
 SRCDIR = src
