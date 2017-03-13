@@ -1,3 +1,4 @@
 *.o
 *.d
 client
+uwebsockets/libuWS.so

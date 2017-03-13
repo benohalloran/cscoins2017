@@ -1,6 +1,7 @@
 CPP = g++
 HEADERDIR=include
-CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread -I$(HEADERDIR)
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread \
+						-I$(HEADERDIR)
 LDFLAGS = $(CPPFLAGS) -lcrypto
 
 TARGET = client
@@ -19,7 +20,7 @@ $(OBJDIR):
 $(DEPDIR):
 	@mkdir -p $(DEPDIR)
 
-$(DEPDIR)/%.d: $(SRCDIR)/%.cpp
+$(DEPDIR)/%.d: $(SRCDIR)/%.cpp $(DEPDIR)
 	@echo "Creating dependency $@"
 	@$(CPP) $(CPPFLAGS) -MM -o $@ $?
 -include $(DEP)
@@ -28,7 +29,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	@echo "Compiling $@"
 	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
-$(TARGET): $(OBJECTS)
+
+uwebsockets/libuWS.so:
+	@$(MAKE) -C uwebsockets
+
+$(TARGET): $(OBJECTS) uwebsockets/libuWS.so
 	@mkdir -p $(DEPDIR)
 	@echo "Linking client"
 	@$(CPP) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
@@ -36,3 +41,4 @@ $(TARGET): $(OBJECTS)
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(DEP) *.ii *.s
 	rmdir $(DEPDIR) $(OBJDIR)
+	@$(MAKE) -C uwebsockets clean
