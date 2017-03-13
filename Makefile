@@ -1,7 +1,7 @@
 CPP = g++
 HEADERDIR = include
-CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 -pthread \
-						-I$(HEADERDIR)
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread \
+						-std=gnu++14 -pthread -I$(HEADERDIR)
 LDFLAGS = $(CPPFLAGS) -lcrypto -lssl -lz
 
 TARGET = client
@@ -25,7 +25,11 @@ $(DEPDIR)/%.d: $(SRCDIR)/%.cpp $(DEPDIR)
 	@$(CPP) $(CPPFLAGS) -MM -o $@ $<
 -include $(DEP)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(OBJDIR)
+# NOTE:: DO NOT LIST OBJDIR reciepe as a dependency
+# This will cause make to always rebuild each object file
+# since mkdir will update the file create time
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(OBJDIR) # Make the director this way
 	@echo "Compiling $@"
 	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
@@ -39,8 +43,8 @@ $(TARGET): $(OBJECTS) uwebsockets/libuWS.so
 	@$(CPP) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	@rm -f $(OBJECTS) $(TARGET) $(DEP) *.ii *.s
-	@rmdir $(DEPDIR) $(OBJDIR)
+	@rm -rdf $(OBJECTS) $(TARGET) $(DEP) *.ii *.s $(OBJDIR)
 	@$(MAKE) -C uwebsockets clean
+	@$(MAKE) -C src clean
 
 .PHONY: clean
