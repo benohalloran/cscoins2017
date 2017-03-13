@@ -13,6 +13,8 @@
 #include <thread>
 #include <vector>
 
+#include "rapidjson/document.h"
+
 #include <sched.h>
 
 #define TYPE_SORTED_LIST            1
@@ -26,6 +28,7 @@
 namespace {
 
 using namespace std;
+using namespace rapidjson;
 
 struct challenge {
     int id, n, type;
@@ -35,64 +38,62 @@ struct challenge {
 
 challenge parse(const string &json)
 {
-    size_t m = 0;
-    bool copy = false;
-    challenge ch;
+    Document d;
+    challenge c;
 
-    memset(ch.hash_prefix, 0, sizeof(ch.hash_prefix));
+    d.Parse(json.c_str());
+    assert(d.IsObject());
 
-    string str;
-    str.reserve(json.size());
+    assert(d.HasMember("challenge_id"));
+    const Value &id = d["challenge_id"];
+    assert(id.IsInt());
+    c.id = id.GetInt();
 
-    for (size_t i = 0; i < json.size(); ++i) {
-        const char c = json[i];
-
-        switch (c) {
-        case ':':
-            copy = true;
-            break;
-
-        case'{':
-        case '}':
-        case ',':
-            switch (m++) {
-            case 1:
-                ch.id = atoi(str.c_str());
-                break;
-
-            case 2:
-                if (str == "sortedlist") {
-                    ch.type = TYPE_SORTED_LIST;
-                } else if (str == "reversesortedlist") {
-                    ch.type = TYPE_REVERSE_SORTED_LIST;
-                }
-                break;
-
-            case 3:
-                strcpy(ch.prev_hash, str.c_str());
-                break;
-
-            case 4:
-                strcpy(ch.hash_prefix, str.c_str());
-                break;
-
-            case 6:
-                ch.n = atoi(str.c_str());
-                break;
-            }
-
-            copy = false;
-            str = "";
-            break;
-
-        default:
-            if (copy && ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
-                str += c;
-            }
-        }
+    assert(d.HasMember("challenge_name"));
+    const Value &name = d["challenge_name"];
+    assert(name.IsString());
+    const char *name_str = name.GetString();
+    if (!strcmp(name_str, "sorted_list")) {
+        c.type = TYPE_SORTED_LIST;
+    } else if (!strcmp(name_str, "reverse_sorted_list")) {
+        c.type = TYPE_REVERSE_SORTED_LIST;
+    } else {
+        assert(0);
     }
 
-    return ch;
+    assert(d.HasMember("last_solution_hash"));
+    const Value &hash = d["last_solution_hash"];
+    assert(hash.IsString());
+    const char *hash_str = hash.GetString();
+    assert(strlen(hash_str) == 64);
+    for (unsigned int i = 0; i < 64; ++i) {
+        assert((hash_str[i] >= '0' && hash_str[i] <= '9')
+            || (hash_str[i] >= 'a' && hash_str[i] <= 'f'));
+    }
+    strcpy(c.prev_hash, hash_str);
+
+    assert(d.HasMember("hash_prefix"));
+    const Value &hash_prefix = d["hash_prefix"];
+    assert(hash_prefix.IsString());
+    const char *hash_prefix_str = hash_prefix.GetString();
+    assert(strlen(hash_prefix_str) <= 64);
+    for (unsigned int i = 0; i < strlen(hash_prefix_str); ++i) {
+        assert((hash_prefix_str[i] >= '0' && hash_prefix_str[i] <= '9')
+            || (hash_prefix_str[i] >= 'a' && hash_prefix_str[i] <= 'f'));
+    }
+    strcpy(c.hash_prefix, hash_prefix_str);
+
+    assert(d.HasMember("parameters"));
+    const Value &parameters = d["parameters"];
+    assert(parameters.IsObject());
+
+    assert(parameters.HasMember("nb_elements"));
+    const Value &nb_elements = parameters["nb_elements"];
+    assert(nb_elements.IsInt());
+    c.n = nb_elements.GetInt();
+    assert(c.n >= 1);
+
+    return c;
 }
 
 unsigned int
