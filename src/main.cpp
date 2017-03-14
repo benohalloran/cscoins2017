@@ -5,12 +5,14 @@
 #include <string.h>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include "coinslib/baseclient.hpp"
 
 using namespace rapidjson;
 
 int main(int argc, char** argv)
 {
     uWS::Hub h;
+    BaseClient *client = new BaseClient();
 
     h.onError([](void *user) {
         switch ((long) user) {
@@ -70,12 +72,37 @@ int main(int argc, char** argv)
         }
     });
 
-
+    // {'command': 'submission', 'args': {'challenge_id': challenge_id, 'nonce': nonce, 'hash': hash, 'signature': signature, 'wallet_id': self.wallet_id}}
     h.onMessage([](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
-        std::cout << std::string(message, length) << std::endl;
+        uWS::OpCode opcode = uWS::OpCode::TEXT;
+       /* StringBuffer s;
+        Writer<StringBuffer> writer(s);
+        writer.StartObject();
+        writer.Key("command");
+        writer.String("submission");
+        writer.Key("args");
+        writer.StartObject();
+        writer.Key("challenge_id");
+        writer.String();
+        writer.Key("nonce");
+        writer.String();
+        writer.Key("hash");
+        writer.String();
+
+        writer.Key("signature");
+        writer.Key("wallet_id");
+        
+        writer.EndObject();
+        writer.EndObject();*/
+
+
+
+        std::cout << std::string(message, length) << std::endl; 
         solution s = solve(message);
-        printf("%d %u %s\n", s.id, s.nonce, s.hash);
-        ws.close(1000);
+        std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
+        //ws.send(payload, payloadlength, opcode);
+
+        //ws.close(1000);
     });
 
     h.onDisconnection([](uWS::WebSocket<uWS::CLIENT> ws, int code, char *message, size_t length) {
@@ -91,4 +118,5 @@ int main(int argc, char** argv)
     solution s = solve(input);
     printf("%d %u %s\n", s.id, s.nonce, s.hash);
     */
+    delete client;
 }
