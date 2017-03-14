@@ -1,7 +1,7 @@
 CPP = g++
 HEADERDIR = include
-CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread \
-						-std=gnu++14 -pthread -I$(HEADERDIR)
+INCLUDE = -I$(HEADERDIR) -I/usr/local/include #Second option isosx openssl comand
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread $(INCLUDE)
 LDFLAGS = $(CPPFLAGS) -lcrypto -lssl -lz
 
 TARGET = client
