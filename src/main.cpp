@@ -1,5 +1,5 @@
 #include "solver.hpp"
-#include <uWS/uWS.h>
+#include "uWS/uWS.h"
 #include <iostream>
 #include <cstdio>
 #include <string.h>
@@ -16,14 +16,12 @@ int main(int argc, char** argv)
     cout << "Starting up client..." << endl;
     string hostname = "ec2-54-186-71-144.us-west-2.compute.amazonaws.com";
     int    port     = 8989;
-    BaseClient client = BaseClient(hostname, port, true);
+    bool ssl = true;
+    BaseClient client = BaseClient(hostname, port, ssl);
     cout << client << endl;
-    GetCurrentChallenge command1 = GetCurrentChallenge();
-    cout << command1 << endl;
-    GetChallengeSolution command2 = GetChallengeSolution(100);
-    cout << command2 << endl;
-    GetCentralAuthorityServerInformation command3 = GetCentralAuthorityServerInformation();
-    cout << command3 << endl;
+    client.connect();
+    cout << "Connecting client..." << endl;
+
 
     cout << "Shutting down client..." << std::endl;
 }

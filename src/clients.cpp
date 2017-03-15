@@ -1,15 +1,17 @@
 #include <string>
 #include <iostream>
+#include <sstream>
+#include <uWS/uWS.h>
 #include "coinslib/clients.hpp"
+#include "coinslib/commands.hpp"
+#include "solver.hpp" 
 
-std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {  
-    os << "BaseClient hostname: " << bc.hostname_ << " port: " << bc.port_;  
-    return os;  
-}  
-
-/*
-    uWS::Hub h;
-    h.onError([](void *user) {
+BaseClient::BaseClient(string hostname, int port, bool ssl) {
+    this->hostname_ = hostname;
+    this->port_ = port;
+    this->ssl_ = ssl;
+    this->hub = new uWS::Hub();
+    hub->onError([](void *user) {
         switch ((long) user) {
         case 1:
             std::cout << "Client emitted error on invalid URI" << std::endl;
@@ -35,20 +37,14 @@ std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {
         }
     });
 
-
-    h.onConnection([](uWS::WebSocket<uWS::CLIENT> ws, uWS::HttpRequest req) {
+    hub->onConnection([](uWS::WebSocket<uWS::CLIENT> ws, uWS::HttpRequest req) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
-        StringBuffer s;
-        Writer<StringBuffer> writer(s);
-        writer.StartObject();
-        writer.Key("command");
-        writer.String("get_current_challenge");
-        writer.Key("args");
-        writer.StartArray();
-        writer.EndArray();
-        writer.EndObject();
-        const char *payload = s.GetString();
-        int payloadlength = strlen(s.GetString());
+        auto getchallenge = GetCurrentChallenge();
+        std::cout << getchallenge << std::endl;
+        string command = getchallenge.serialize();
+
+        const char *payload = command.c_str();
+        int payloadlength = strlen(payload);
         switch ((long) ws.getUserData()) {
         case 4:
             std::cout << "Client established a remote connection over non-SSL" << std::endl;
@@ -56,7 +52,7 @@ std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {
             break;
         case 5:
             std::cout << "Client established a remote connection over SSL" << std::endl;
-            std::cout << "sending payload: " << s.GetString() << std::endl;
+            std::cout << "sending payload: " << payload << std::endl;
             ws.send(payload, payloadlength, opcode);
             //ws.close(1000);
             break;
@@ -66,31 +62,8 @@ std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {
         }
     });
 
-    // {'command': 'submission', 'args': {'challenge_id': challenge_id, 'nonce': nonce, 'hash': hash, 'signature': signature, 'wallet_id': self.wallet_id}}
-    h.onMessage([](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
+    hub->onMessage([](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
-        StringBuffer s;
-        Writer<StringBuffer> writer(s);
-        writer.StartObject();
-        writer.Key("command");
-        writer.String("submission");
-        writer.Key("args");
-        writer.StartObject();
-        writer.Key("challenge_id");
-        writer.String();
-        writer.Key("nonce");
-        writer.String();
-        writer.Key("hash");
-        writer.String();
-
-        writer.Key("signature");
-        writer.Key("wallet_id");
-        
-        writer.EndObject();
-        writer.EndObject();
-
-
-
         std::cout << std::string(message, length) << std::endl; 
         solution s = solve(message);
         std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
@@ -99,11 +72,19 @@ std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {
         //ws.close(1000);
     });
 
-    h.onDisconnection([](uWS::WebSocket<uWS::CLIENT> ws, int code, char *message, size_t length) {
+    hub->onDisconnection([](uWS::WebSocket<uWS::CLIENT> ws, int code, char *message, size_t length) {
         std::cout << "Client got disconnected with data: " << ws.getUserData() << ", code: " << code << ", message: <" << std::string(message, length) << ">" << std::endl;
     });
+} 
 
-    h.connect("wss://ec2-54-186-71-144.us-west-2.compute.amazonaws.com:8989/client", (void *) 5);
-    h.run();
+void BaseClient::connect() {
+    std::stringstream sstream;
+    sstream << (this->ssl_ ? "wss://" : "ws://") << this->hostname_ << ":" << this->port_;
+    this->hub->connect(sstream.str(), (void *) 5);
+    this->hub->run();
+}
 
-    */
+std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {  
+    os << "BaseClient hostname: " << bc.hostname_ << " port: " << bc.port_;  
+    return os;  
+}

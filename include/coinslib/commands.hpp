@@ -13,7 +13,7 @@ class BaseCommand {
             command_name_(command_name), args_(args) {}
 
         friend ostream& operator<<(ostream& os, const BaseCommand& bc); 
-    protected:
+
         virtual string serialize() const; 
     private:
         string command_name_;
