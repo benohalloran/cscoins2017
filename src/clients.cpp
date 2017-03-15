@@ -6,6 +6,7 @@
 #include "coinslib/commands.hpp"
 #include "solver.hpp" 
 
+
 BaseClient::BaseClient(string hostname, int port, bool ssl) {
     this->hostname_ = hostname;
     this->port_ = port;
