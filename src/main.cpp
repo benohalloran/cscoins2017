@@ -22,6 +22,8 @@ int main(int argc, char** argv)
     cout << command1 << endl;
     GetChallengeSolution command2 = GetChallengeSolution(100);
     cout << command2 << endl;
+    GetCentralAuthorityServerInformation command3 = GetCentralAuthorityServerInformation();
+    cout << command3 << endl;
 
     cout << "Shutting down client..." << std::endl;
 }

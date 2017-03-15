@@ -41,6 +41,24 @@ class RegisterWallet : public BaseCommand {
 class GetTransactions : public BaseCommand {
     public:
         GetTransactions(int start, int count) : BaseCommand("get_transactions", 
-                {{"start", start}, {"count", count}}) {}
+                {{"start", to_string(start)}, {"count", to_string(count)}}) {}
+};
+
+class CreateTransaction : public BaseCommand {
+    public:
+        CreateTransaction(string source, string recipient, double amount, string signature) : BaseCommand("create_transaction", 
+                {{"source", source}, {"recipient", recipient}, {"amount", to_string(amount)}, {"signature", signature}}) {}
+};
+
+class Submission : public BaseCommand {
+    public:
+        Submission(string wallet_id, string nonce) : BaseCommand("submission",
+                {{"wallet_id", wallet_id}, {"nonce", nonce}}) {}
+};
+
+
+class GetCentralAuthorityServerInformation : public BaseCommand {
+     public:
+         GetCentralAuthorityServerInformation() : BaseCommand("ca_server_info", {}) {}
 };
 
