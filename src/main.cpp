@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     string hostname = "ec2-54-186-71-144.us-west-2.compute.amazonaws.com";
     int    port     = 8989;
     bool ssl = true;
-    BaseClient client = BaseClient(hostname, port, ssl);
+    MinerClient client = MinerClient(hostname, port, ssl);
     cout << client << endl;
     client.connect();
     cout << "Connecting client..." << endl;

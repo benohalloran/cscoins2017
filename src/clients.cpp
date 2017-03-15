@@ -66,8 +66,15 @@ BaseClient::BaseClient(string hostname, int port, bool ssl) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
         std::cout << std::string(message, length) << std::endl; 
         solution s = solve(message);
+        auto submission = Submission(to_string(s.id), to_string(s.nonce));
         std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
-        //ws.send(payload, payloadlength, opcode);
+        std::cout << submission << std::endl;
+        string command = submission.serialize();
+
+        const char *payload = command.c_str();
+        int payloadlength = strlen(payload);
+
+        ws.send(payload, payloadlength, opcode);
 
         //ws.close(1000);
     });
@@ -87,4 +94,12 @@ void BaseClient::connect() {
 std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {  
     os << "BaseClient hostname: " << bc.hostname_ << " port: " << bc.port_;  
     return os;  
+}
+
+
+void MinerClient::connect() {
+    std::stringstream sstream;
+    sstream << (this->ssl_ ? "wss://" : "ws://") << this->hostname_ << ":" << this->port_ << "/client";
+    this->hub->connect(sstream.str(), (void *) 5);
+    this->hub->run();
 }
