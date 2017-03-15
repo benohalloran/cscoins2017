@@ -5,7 +5,7 @@
 #include <string.h>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-#include "coinslib/baseclient.hpp"
+#include "coinslib/clients.hpp"
 #include "coinslib/commands.hpp"
 
 using namespace std;

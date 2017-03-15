@@ -1,6 +1,6 @@
 #include <string>
 #include <iostream>
-#include "coinslib/baseclient.hpp"
+#include "coinslib/clients.hpp"
 
 std::ostream& operator<<(std::ostream& os, const BaseClient& bc)  {  
     os << "BaseClient hostname: " << bc.hostname_ << " port: " << bc.port_;  

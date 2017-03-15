@@ -19,3 +19,7 @@ class BaseClient {
        string wallet_name; */
 
 };
+
+class MinerClient : public BaseClient {
+
+};
