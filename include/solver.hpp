@@ -11,8 +11,8 @@
 #define UNLIKELY(x) __builtin_expect((x), 0)
 
 constexpr unsigned int MAX_NONCE = 100000000;
-constexpr unsigned int N_BINS = 256;
-constexpr unsigned int BIN_SHIFT = 56;
+constexpr unsigned int N_BINS = 32;
+constexpr unsigned int BIN_SHIFT = 59;
 
 static_assert((-1ul >> BIN_SHIFT) + 1 == N_BINS, "invalid bins");
 
