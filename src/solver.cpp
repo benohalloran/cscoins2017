@@ -1,108 +1,72 @@
+#define SOLVER_CPP_ 1
 #include "solver.hpp"
-#include "sha256.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <condition_variable>
 #include <cstdio>
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <random>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
-#include "rapidjson/document.h"
-
+#if SET_AFFINITY
 #include <sched.h>
-
-#define TYPE_SORTED_LIST            1
-#define TYPE_REVERSE_SORTED_LIST    2
-
-#define N_BINS 256
-#define BIN_SHIFT 56
-
-#define MAX_NONCE 100000000
+#endif
 
 namespace {
 
 using namespace std;
-using namespace rapidjson;
 
-struct challenge {
-    int id, n, type;
-    char hash_prefix[65];
-    char prev_hash[65];
-};
+const unsigned int T = thread::hardware_concurrency();
 
-challenge parse(const string &json)
+struct sorting_solver;
+struct path_solver;
+
+vector<sorting_solver> sorting_solvers;
+vector<path_solver> path_solvers;
+unsigned int new_sorting_challenge, new_path_challenge;
+bool new_solution;
+challenge current_challenge;
+solution our_solution;
+mutex mtx;
+condition_variable sorting_cv, path_cv, solution_cv;
+
+#if SET_AFFINITY
+void set_affinity(int cpu)
 {
-    Document d;
-    challenge c;
-
-    d.Parse(json.c_str());
-    assert(d.IsObject());
-
-    assert(d.HasMember("challenge_id"));
-    const Value &id = d["challenge_id"];
-    assert(id.IsInt());
-    c.id = id.GetInt();
-
-    assert(d.HasMember("challenge_name"));
-    const Value &name = d["challenge_name"];
-    assert(name.IsString());
-    const char *name_str = name.GetString();
-    if (!strcmp(name_str, "sorted_list")) {
-        c.type = TYPE_SORTED_LIST;
-    } else if (!strcmp(name_str, "reverse_sorted_list")) {
-        c.type = TYPE_REVERSE_SORTED_LIST;
-    } else {
-        assert(0);
-    }
-
-    assert(d.HasMember("last_solution_hash"));
-    const Value &hash = d["last_solution_hash"];
-    assert(hash.IsString());
-    const char *hash_str = hash.GetString();
-    assert(strlen(hash_str) == 64);
-    for (unsigned int i = 0; i < 64; ++i) {
-        assert((hash_str[i] >= '0' && hash_str[i] <= '9')
-            || (hash_str[i] >= 'a' && hash_str[i] <= 'f'));
-    }
-    strcpy(c.prev_hash, hash_str);
-
-    assert(d.HasMember("hash_prefix"));
-    const Value &hash_prefix = d["hash_prefix"];
-    assert(hash_prefix.IsString());
-    const char *hash_prefix_str = hash_prefix.GetString();
-    assert(strlen(hash_prefix_str) <= 64);
-    for (unsigned int i = 0; i < strlen(hash_prefix_str); ++i) {
-        assert((hash_prefix_str[i] >= '0' && hash_prefix_str[i] <= '9')
-            || (hash_prefix_str[i] >= 'a' && hash_prefix_str[i] <= 'f'));
-    }
-    strcpy(c.hash_prefix, hash_prefix_str);
-
-    assert(d.HasMember("parameters"));
-    const Value &parameters = d["parameters"];
-    assert(parameters.IsObject());
-
-    assert(parameters.HasMember("nb_elements"));
-    const Value &nb_elements = parameters["nb_elements"];
-    assert(nb_elements.IsInt());
-    c.n = nb_elements.GetInt();
-    assert(c.n >= 1);
-
-    return c;
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(cpu, &set);
+    int ret = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+    assert(ret == 0);
 }
+#else
+inline void set_affinity(int cpu)
+{
+    (void)cpu;
+}
+#endif
 
-unsigned int
-num_to_str(uint64_t n, char *buf)
+inline unsigned int num_to_str(uint64_t n, char *buf)
 {
     if (n < 10) {
         buf[0] = n + '0';
         buf[1] = '\0';
         return 1;
+    }
+
+    if (n < 100) {
+        buf[0] = n / 10 + '0';
+        buf[1] = n % 10 + '0';
+        buf[2] = '\0';
+        return 2;
     }
 
     buf[20] = '\0';
@@ -121,160 +85,154 @@ num_to_str(uint64_t n, char *buf)
     return 19 - i;
 }
 
-void solve_sorted_list(const challenge &c, unsigned int start_nonce,
-    solution *s, atomic<bool> *done)
+#include "sorting.hpp"
+#include "sha256.hpp"
+#include "sorting_solver.hpp"
+#include "path_solver.hpp"
+
+inline void end_all_solvers()
 {
-    unsigned char mem[32 + 8];
-    unsigned char *hash = mem + 8 - (size_t)mem % 8;
-    vector<uint64_t> bins[N_BINS];
-    const size_t prefix_len = strlen(c.hash_prefix);
-    char seed_str[64 + 20 + 1];
-    vector<char> solution_mem (c.n * 20 + 1);
-    char *solution_buf = solution_mem.data(),
-         *cur_solution_buf = solution_buf;
-
-    strcpy(seed_str, c.prev_hash);
-
-    for (auto &v : bins) {
-        v.reserve(c.n);
+    for (auto &solver : sorting_solvers) {
+        solver.should_end = true;
     }
-
-    mt19937_64 gen;
-    unsigned int nonce = start_nonce;
-    unsigned int seed_len = num_to_str(nonce, seed_str + 64) + 64;
-
-    for (;;) {
-        sha256(seed_str, seed_len, hash);
-        uint64_t seed = *(uint64_t *)hash;
-        gen.seed(seed);
-        for (int i = 0; i < c.n; ++i) {
-            uint64_t r = gen();
-            bins[r >> BIN_SHIFT].push_back(r);
-        }
-
-        if (c.type == TYPE_SORTED_LIST) {
-            for (int i = 0; i < N_BINS; ++i) {
-                if (bins[i].empty()) {
-                    continue;
-                }
-
-                sort(bins[i].begin(), bins[i].end());
-
-                for (uint64_t d : bins[i]) {
-                    cur_solution_buf += num_to_str(d, cur_solution_buf);
-                }
-            }
-        } else {
-            for (int i = N_BINS - 1; i >= 0; --i) {
-                if (bins[i].empty()) {
-                    continue;
-                }
-
-                sort(bins[i].begin(), bins[i].end(), greater<uint64_t>());
-
-                for (uint64_t d : bins[i]) {
-                    cur_solution_buf += num_to_str(d, cur_solution_buf);
-                }
-            }
-        }
-
-        sha256(solution_buf, cur_solution_buf - solution_buf, hash);
-        if (check_prefix(hash, c.hash_prefix, prefix_len)) {
-            if (*done) {
-                return;
-            }
-            s->id = c.id;
-            s->nonce = nonce;
-            hash_str(hash, s->hash);
-            *done = true;
-            return;
-        }
-
-        if (*done) {
-            break;
-        }
-        cur_solution_buf = solution_buf;
-        for (int i = 0; i < N_BINS; ++i) {
-            bins[i].clear();
-        }
-        ++nonce;
-        if (seed_str[seed_len - 1] == '9') {
-            seed_len = num_to_str(nonce, seed_str + 64) + 64;
-        } else {
-            ++seed_str[seed_len - 1];
-        }
+    for (auto &solver : path_solvers) {
+        solver.should_end = true;
     }
 }
 
-void solve(const challenge &c, unsigned int start_nonce,
-    solution *s, atomic<bool> *done)
+}
+
+solution solve(const char *json)
 {
+    challenge c;
+    parse(json, c);
+
+    mtx.lock();
+    current_challenge = c;
     switch (c.type) {
     case TYPE_SORTED_LIST:
     case TYPE_REVERSE_SORTED_LIST:
-        solve_sorted_list(c, start_nonce, s, done);
+        new_sorting_challenge = T;
         break;
 
-    default:
-        assert(0);
+    case TYPE_SHORTEST_PATH:
+        new_path_challenge = T;
+        break;
     }
-}
+    mtx.unlock();
 
-void set_affinity(int cpu)
-{
-    cpu_set_t set;
-    CPU_ZERO(&set);
-    CPU_SET(cpu, &set);
-    int ret = sched_setaffinity(0, sizeof(cpu_set_t), &set);
-    assert(ret == 0);
-}
+    end_all_solvers();
 
-solution solve(const challenge &c)
-{
-    const unsigned int T = thread::hardware_concurrency() - 1;
+    switch (c.type) {
+    case TYPE_SORTED_LIST:
+    case TYPE_REVERSE_SORTED_LIST:
+        sorting_cv.notify_all();
+        break;
 
-    if (T == 0 || strlen(c.hash_prefix) <= 3) {
-        solution s;
-        atomic<bool> done {false};
-        solve(c, 0, &s, &done);
-        return s;
+    case TYPE_SHORTEST_PATH:
+        path_cv.notify_all();
+        break;
     }
 
-    vector<thread> threads (T);
-    vector<atomic<bool>> dones (T);
-    vector<solution> solutions (T);
+    unique_lock<mutex> lk (mtx);
+    solution_cv.wait(lk, [] () {
+        return new_solution;
+    });
+    end_all_solvers();
+    new_solution = false;
+    return our_solution;
+}
 
+void init_solver()
+{
+    sorting_solvers.reserve(T);
+    path_solvers.reserve(T);
     for (unsigned int i = 0; i < T; ++i) {
-        dones[i] = false;
-        threads[i] = thread([=] (const challenge &c, solution *s, atomic<bool> *done) {
-            set_affinity(i);
-            solve(c, MAX_NONCE / T * i, s, done);
-        }, c, &solutions[i], &dones[i]);
+        sorting_solvers.emplace_back(i);
+        path_solvers.emplace_back(i);
     }
-    set_affinity(T);
-
-    unsigned int index;
-    for (;;) {
-        for (unsigned int i = 0; i < T; ++i) {
-            if (dones[i]) {
-                index = i;
-                goto done;
-            }
-        }
-    }
-
-done:
     for (unsigned int i = 0; i < T; ++i) {
-        dones[i] = true;
-        threads[i].detach();
+        sorting_solvers[i].t = thread([=] () {
+            sorting_solvers[i].loop();
+        });
+        sorting_solvers[i].t.detach();
+        // path_solvers[i].t = thread([=] () {
+        //     path_solvers[i].loop();
+        // });
     }
-
-    return solutions[index];
 }
 
-}
-
-solution solve(const std::string &json)
+#ifdef TESTING
+void test_solver()
 {
-    return solve(parse(json));
+    char buf[1024];
+
+    assert(num_to_str(7, buf) == 1);
+    assert(buf[0] == '7');
+    assert(buf[1] == '\0');
+    assert(num_to_str(36, buf) == 2);
+    assert(buf[0] == '3');
+    assert(buf[1] == '6');
+    assert(buf[2] == '\0');
+    assert(num_to_str(1024, buf) == 4);
+    assert(buf[0] == '1');
+    assert(buf[1] == '0');
+    assert(buf[2] == '2');
+    assert(buf[3] == '4');
+    assert(buf[4] == '\0');
+
+    vector<uint64_t> array = {2, 1};
+    fast_sort(array.data(), 2);
+    assert(array[0] == 1);
+    assert(array[1] == 2);
+    array = {5, 7, 3, 4, 2, 6, 1, 8};
+    fast_sort(array.data(), 8);
+    assert(array[0] == 1);
+    assert(array[1] == 2);
+    assert(array[2] == 3);
+    assert(array[3] == 4);
+    assert(array[4] == 5);
+    assert(array[5] == 6);
+    assert(array[6] == 7);
+    assert(array[7] == 8);
+
+    unsigned char mem[32 + 8];
+    unsigned char *hash = mem + 8 - (size_t)mem % 8;
+    assert(IS_ALIGNED_TO(hash, 8));
+    sha256("", 0, hash);
+    assert(*(uint64_t *)hash == 0x141cfc9842c4b0e3);
+    assert(check_prefix(hash, 0xb0e3, strdup("e3b"), 3));
+    assert(!check_prefix(hash, 0xb0e3, strdup("e3c"), 3));
+    assert(check_prefix(hash, 0xb0e3, strdup("e3b0"), 4));
+    assert(!check_prefix(hash, 0xe3b0, strdup("e3b0"), 4));
+    assert(check_prefix(hash, 0xb0e3, strdup("e3b0c"), 5));
+    assert(!check_prefix(hash, 0xb0e3, strdup("e3b0d"), 5));
+    assert(check_prefix(hash, 0xb0e3, strdup("e3b0c4"), 6));
+    assert(!check_prefix(hash, 0xb0e3, strdup("e3b0c5"), 6));
+    char str[65];
+    hash_str(hash, str);
+    assert(str[64] == '\0');
+    assert(!strcmp(str,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+
+    challenge c;
+    parse("{ \
+        \"challenge_id\": 0, \
+        \"challenge_name\": \"sorted_list\", \
+        \"last_solution_hash\": \
+        \"0000000000000000000000000000000000000000000000000000000000000000\", \
+        \"hash_prefix\": \"94f8\", \
+        \"parameters\": { \
+            \"nb_elements\": 20 \
+        } \
+    }", c);
+    assert(c.id == 0);
+    assert(c.type == TYPE_SORTED_LIST);
+    assert(!strcmp(c.prev_hash,
+            "0000000000000000000000000000000000000000000000000000000000000000"));
+    assert(!strcmp(c.hash_prefix, "94f8"));
+    assert(c.n == 20);
+    assert(c.hash_prefix_len == 4);
+    assert(c.prefix4 == 0xf894);
 }
+#endif

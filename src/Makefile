@@ -1,13 +1,13 @@
 CC = g++
-CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -pthread -std=gnu++14 \
-	-pthread -save-temps -I ../include -DTESTING
+CPPFLAGS = -O3 -g3 -march=native -flto -Wall -Wextra -std=gnu++14 -pthread \
+		   -save-temps -I ../include -DTESTING -fno-strict-aliasing
 LDFLAGS = $(CPPFLAGS) -lcrypto
 
 .PHONY: all clean
 
 all: test
 
-test: test.o solver.o sha256.o
+test: test.o solver.o parser.o
 
 clean:
 	rm -f -- test *.ii *.[os] *.res *.out
