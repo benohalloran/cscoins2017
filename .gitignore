@@ -2,3 +2,4 @@
 *.d
 client
 uwebsockets/libuWS.so
+.nfs*
