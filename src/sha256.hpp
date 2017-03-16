@@ -17,7 +17,7 @@ inline void sha256(const char *str, size_t len, unsigned char *hash)
 }
 
 #define H(s) (s[0] | (s[1] << 8))
-constexpr uint64_t hex[] = {
+constexpr uint64_t hex_vals[] = {
     H("00"), H("01"), H("02"), H("03"), H("04"), H("05"), H("06"), H("07"),
     H("08"), H("09"), H("0a"), H("0b"), H("0c"), H("0d"), H("0e"), H("0f"),
     H("10"), H("11"), H("12"), H("13"), H("14"), H("15"), H("16"), H("17"),
@@ -58,7 +58,7 @@ void hash_str(const unsigned char *hash, char *str)
     assert(IS_ALIGNED_TO(str, 2));
     uint16_t *str2 = (uint16_t *)str;
     for (unsigned int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        str2[i] = hex[hash[i]];
+        str2[i] = hex_vals[hash[i]];
     }
     str[SHA256_DIGEST_LENGTH * 2] = '\0';
 }
@@ -76,8 +76,8 @@ inline bool check_prefix(const unsigned char *hash, uint16_t prefix4,
     } else {
         uint16_t str2[2];
         char *str = (char *)str2;
-        str2[0] = hex[hash[0]];
-        str2[1] = hex[hash[1]];
+        str2[0] = hex_vals[hash[0]];
+        str2[1] = hex_vals[hash[1]];
         for (unsigned int i = 0; i < len; ++i) {
             if (str[i] != prefix[i]) {
                 return false;
@@ -94,7 +94,7 @@ inline bool check_prefix(const unsigned char *hash, uint16_t prefix4,
 
         uint16_t str2;
         char *str = (char *)&str2;
-        str2 = hex[hash[i]];
+        str2 = hex_vals[hash[i]];
         if (str[0] != prefix[index]) {
             return false;
         }

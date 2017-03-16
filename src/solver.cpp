@@ -54,37 +54,7 @@ inline void set_affinity(int cpu)
 }
 #endif
 
-inline unsigned int num_to_str(uint64_t n, char *buf)
-{
-    if (n < 10) {
-        buf[0] = n + '0';
-        buf[1] = '\0';
-        return 1;
-    }
-
-    if (n < 100) {
-        buf[0] = n / 10 + '0';
-        buf[1] = n % 10 + '0';
-        buf[2] = '\0';
-        return 2;
-    }
-
-    buf[20] = '\0';
-
-    int i;
-    for (i = 19; n && i >= 0; --i) {
-        const uint64_t m = n % 10;
-        n /= 10;
-        buf[i] = m + '0';
-    }
-
-    for (int j = 0; j < 20 - i; ++j) {
-        buf[j] = buf[j + i + 1];
-    }
-
-    return 19 - i;
-}
-
+#include "num_to_str.hpp"
 #include "sorting.hpp"
 #include "sha256.hpp"
 #include "sorting_solver.hpp"
@@ -145,6 +115,7 @@ solution solve(const char *json)
 
 void init_solver()
 {
+    init_decimals();
     sorting_solvers.reserve(T);
     path_solvers.reserve(T);
     for (unsigned int i = 0; i < T; ++i) {
@@ -165,21 +136,94 @@ void init_solver()
 #ifdef TESTING
 void test_solver()
 {
-    char buf[1024];
+    for (int align = 0; align <= 4; ++align) {
+        char mem1[1024 + 8];
+        char *buf = mem1 + 8 - (size_t)mem1 % 8 + align;
 
-    assert(num_to_str(7, buf) == 1);
-    assert(buf[0] == '7');
-    assert(buf[1] == '\0');
-    assert(num_to_str(36, buf) == 2);
-    assert(buf[0] == '3');
-    assert(buf[1] == '6');
-    assert(buf[2] == '\0');
-    assert(num_to_str(1024, buf) == 4);
-    assert(buf[0] == '1');
-    assert(buf[1] == '0');
-    assert(buf[2] == '2');
-    assert(buf[3] == '4');
-    assert(buf[4] == '\0');
+        assert(num_to_str(7, buf) == 1);
+        assert(buf[0] == '7');
+        assert(buf[1] == '\0');
+        assert(num_to_str(36, buf) == 2);
+        assert(buf[0] == '3');
+        assert(buf[1] == '6');
+        assert(buf[2] == '\0');
+        assert(num_to_str(1024, buf) == 4);
+        assert(buf[0] == '1');
+        assert(buf[1] == '0');
+        assert(buf[2] == '2');
+        assert(buf[3] == '4');
+        assert(buf[4] == '\0');
+        assert(num_to_str(12345, buf) == 5);
+        assert(buf[0] == '1');
+        assert(buf[1] == '2');
+        assert(buf[2] == '3');
+        assert(buf[3] == '4');
+        assert(buf[4] == '5');
+        assert(buf[5] == '\0');
+        assert(num_to_str(18446744073709551615lu, buf) == 20);
+        assert(buf[0] == '1');
+        assert(buf[1] == '8');
+        assert(buf[2] == '4');
+        assert(buf[3] == '4');
+        assert(buf[4] == '6');
+        assert(buf[5] == '7');
+        assert(buf[6] == '4');
+        assert(buf[7] == '4');
+        assert(buf[8] == '0');
+        assert(buf[9] == '7');
+        assert(buf[10] == '3');
+        assert(buf[11] == '7');
+        assert(buf[12] == '0');
+        assert(buf[13] == '9');
+        assert(buf[14] == '5');
+        assert(buf[15] == '5');
+        assert(buf[16] == '1');
+        assert(buf[17] == '6');
+        assert(buf[18] == '1');
+        assert(buf[19] == '5');
+        assert(buf[20] == '\0');
+        assert(num_to_str(8446744073709551615lu, buf) == 19);
+        assert(buf[0] == '8');
+        assert(buf[1] == '4');
+        assert(buf[2] == '4');
+        assert(buf[3] == '6');
+        assert(buf[4] == '7');
+        assert(buf[5] == '4');
+        assert(buf[6] == '4');
+        assert(buf[7] == '0');
+        assert(buf[8] == '7');
+        assert(buf[9] == '3');
+        assert(buf[10] == '7');
+        assert(buf[11] == '0');
+        assert(buf[12] == '9');
+        assert(buf[13] == '5');
+        assert(buf[14] == '5');
+        assert(buf[15] == '1');
+        assert(buf[16] == '6');
+        assert(buf[17] == '1');
+        assert(buf[18] == '5');
+        assert(buf[19] == '\0');
+        assert(num_to_str(446744073709551615lu, buf) == 18);
+        assert(buf[0] == '4');
+        assert(buf[1] == '4');
+        assert(buf[2] == '6');
+        assert(buf[3] == '7');
+        assert(buf[4] == '4');
+        assert(buf[5] == '4');
+        assert(buf[6] == '0');
+        assert(buf[7] == '7');
+        assert(buf[8] == '3');
+        assert(buf[9] == '7');
+        assert(buf[10] == '0');
+        assert(buf[11] == '9');
+        assert(buf[12] == '5');
+        assert(buf[13] == '5');
+        assert(buf[14] == '1');
+        assert(buf[15] == '6');
+        assert(buf[16] == '1');
+        assert(buf[17] == '5');
+        assert(buf[18] == '\0');
+    }
 
     vector<uint64_t> array = {2, 1};
     fast_sort(array.data(), 2);
@@ -196,8 +240,8 @@ void test_solver()
     assert(array[6] == 7);
     assert(array[7] == 8);
 
-    unsigned char mem[32 + 8];
-    unsigned char *hash = mem + 8 - (size_t)mem % 8;
+    unsigned char mem2[32 + 8];
+    unsigned char *hash = mem2 + 8 - (size_t)mem2 % 8;
     assert(IS_ALIGNED_TO(hash, 8));
     sha256("", 0, hash);
     assert(*(uint64_t *)hash == 0x141cfc9842c4b0e3);
