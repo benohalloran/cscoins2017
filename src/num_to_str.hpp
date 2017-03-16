@@ -2,188 +2,48 @@
 #error "cannot be included"
 #endif
 
-#define FILL1 b[0] = decimals[n % 10000]; n /= 10000
-#define FILL2 b[1] = decimals[n % 10000]; n /= 10000; FILL1
-#define FILL3 b[2] = decimals[n % 10000]; n /= 10000; FILL2
-#define FILL4 b[3] = decimals[n % 10000]; n /= 10000; FILL3
-#define FILL5 b[4] = decimals[n % 10000]; n /= 10000; FILL4
+constexpr uint16_t decimals[100] = {
+    0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830,
+    0x3930, 0x3031, 0x3131, 0x3231, 0x3331, 0x3431, 0x3531, 0x3631, 0x3731,
+    0x3831, 0x3931, 0x3032, 0x3132, 0x3232, 0x3332, 0x3432, 0x3532, 0x3632,
+    0x3732, 0x3832, 0x3932, 0x3033, 0x3133, 0x3233, 0x3333, 0x3433, 0x3533,
+    0x3633, 0x3733, 0x3833, 0x3933, 0x3034, 0x3134, 0x3234, 0x3334, 0x3434,
+    0x3534, 0x3634, 0x3734, 0x3834, 0x3934, 0x3035, 0x3135, 0x3235, 0x3335,
+    0x3435, 0x3535, 0x3635, 0x3735, 0x3835, 0x3935, 0x3036, 0x3136, 0x3236,
+    0x3336, 0x3436, 0x3536, 0x3636, 0x3736, 0x3836, 0x3936, 0x3037, 0x3137,
+    0x3237, 0x3337, 0x3437, 0x3537, 0x3637, 0x3737, 0x3837, 0x3937, 0x3038,
+    0x3138, 0x3238, 0x3338, 0x3438, 0x3538, 0x3638, 0x3738, 0x3838, 0x3938,
+    0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839,
+    0x3939
+};
 
-uint32_t decimals[10000];
-uint16_t decimals100[100];
-
-void num_to_str_20(uint64_t n, char *buf)
+template <unsigned int len>
+inline void num_to_str_(uint64_t n, char *buf)
 {
-    uint32_t *b = (uint32_t *)buf;
-    FILL5;
+    uint16_t *b = (uint16_t *)(buf + (len % 2));
+
+    for (unsigned int i = 0; i < len / 2; ++i) {
+        b[len / 2 - 1 - i] = decimals[n % 100];
+        n /= 100;
+    }
+
+    if (len % 2 == 1) {
+        buf[0] = n + '0';
+    }
 }
 
-void num_to_str_19(uint64_t n, char *buf)
+template <unsigned int len>
+inline void num_to_str_align(uint64_t n, char *buf)
 {
-    uint32_t *b = (uint32_t *)(buf + 3);
-    FILL4;
-    *(uint16_t *)(buf + 1) = decimals100[n % 100];
-    buf[0] = n / 100 + '0';
-}
+    const unsigned int off_by = ((size_t)buf + len) % 2;
 
-void num_to_str_18(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 2);
-    FILL4;
-    *(uint16_t *)buf = decimals100[n];
-}
-
-void num_to_str_17(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 1);
-    FILL4;
-    buf[0] = n + '0';
-}
-
-void num_to_str_16(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)buf;
-    FILL4;
-}
-
-void num_to_str_15(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 3);
-    FILL3;
-    *(uint16_t *)(buf + 1) = decimals100[n % 100];
-    buf[0] = n / 100 + '0';
-}
-
-void num_to_str_14(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 2);
-    FILL3;
-    *(uint16_t *)buf = decimals100[n];
-}
-
-void num_to_str_13(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 1);
-    FILL3;
-    buf[0] = n + '0';
-}
-
-void num_to_str_12(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)buf;
-    FILL3;
-}
-
-void num_to_str_11(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 3);
-    FILL2;
-    *(uint16_t *)(buf + 1) = decimals100[n % 100];
-    buf[0] = n / 100 + '0';
-}
-
-void num_to_str_10(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 2);
-    FILL2;
-    *(uint16_t *)buf = decimals100[n];
-}
-
-void num_to_str_9(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 1);
-    FILL2;
-    buf[0] = n + '0';
-}
-
-void num_to_str_8(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)buf;
-    FILL2;
-}
-
-void num_to_str_7(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 3);
-    FILL1;
-    *(uint16_t *)(buf + 1) = decimals100[n % 100];
-    buf[0] = n / 100 + '0';
-}
-
-void num_to_str_6(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 2);
-    FILL1;
-    *(uint16_t *)buf = decimals100[n];
-}
-
-void num_to_str_5(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)(buf + 1);
-    FILL1;
-    buf[0] = n + '0';
-}
-
-void num_to_str_4(uint64_t n, char *buf)
-{
-    uint32_t *b = (uint32_t *)buf;
-    b[0] = decimals[n];
-}
-
-void num_to_str_3(uint64_t n, char *buf)
-{
-    *(uint16_t *)(buf + 1) = decimals100[n % 100];
-    buf[0] = n / 100 + '0';
-}
-
-void num_to_str_2(uint64_t n, char *buf)
-{
-    *(uint16_t *)buf = decimals100[n];
-}
-
-void num_to_str_1(uint64_t n, char *buf)
-{
-    buf[0] = n + '0';
-}
-
-inline void num_to_str_align(uint64_t n, char *buf, unsigned int len)
-{
-    static void *align_jmp_table[4] = {
-        &&off_by_0, &&off_by_1, &&off_by_2, &&off_by_3
-    };
-    static void (* const num_to_str_jmp_table[21])(uint64_t n, char *buf) = {
-        NULL, num_to_str_1, num_to_str_2, num_to_str_3, num_to_str_4,
-        num_to_str_5, num_to_str_6, num_to_str_7, num_to_str_8, num_to_str_9,
-        num_to_str_10, num_to_str_11, num_to_str_12, num_to_str_13,
-        num_to_str_14, num_to_str_15, num_to_str_16, num_to_str_17,
-        num_to_str_18, num_to_str_19, num_to_str_20
-    };
-
-    const unsigned int off_by = ((size_t)buf + len) % 4;
-    goto *align_jmp_table[off_by];
-
-off_by_0:
-    num_to_str_jmp_table[len](n, buf);
-    return;
-
-off_by_1:
-    buf[len - 1] = n % 10 + '0';
-    n /= 10;
-    num_to_str_jmp_table[len - 1](n, buf);
-    return;
-
-off_by_2:
-    *(uint16_t *)&buf[len - 2] = decimals100[n % 100];
-    n /= 100;
-    num_to_str_jmp_table[len - 2](n, buf);
-    return;
-
-off_by_3:
-    *(uint16_t *)&buf[len - 2] = decimals100[n % 100];
-    n /= 100;
-    buf[len - 3] = n % 10 + '0';
-    n /= 10;
-    num_to_str_jmp_table[len - 3](n, buf);
-    return;
+    if (off_by == 0) {
+        num_to_str_<len>(n, buf);
+    } else {
+        buf[len - 1] = n % 10 + '0';
+        n /= 10;
+        num_to_str_<len - 1>(n, buf);
+    }
 }
 
 inline unsigned int num_to_str(uint64_t n, char *buf)
@@ -212,127 +72,101 @@ inline unsigned int num_to_str(uint64_t n, char *buf)
 
     if (n >= 10000000000000000000lu) {
         buf[20] = '\0';
-        num_to_str_align(n, buf, 20);
+        num_to_str_align<20>(n, buf);
         return 20;
     }
 
     if (n >= 1000000000000000000lu) {
         buf[19] = '\0';
-        num_to_str_align(n, buf, 19);
+        num_to_str_align<19>(n, buf);
         return 19;
     }
 
     if (n >= 100000000000000000lu) {
         buf[18] = '\0';
-        num_to_str_align(n, buf, 18);
+        num_to_str_align<18>(n, buf);
         return 18;
     }
 
     if (n >= 10000000000000000lu) {
         buf[17] = '\0';
-        num_to_str_align(n, buf, 17);
+        num_to_str_align<17>(n, buf);
         return 17;
     }
 
     if (n >= 1000000000000000lu) {
         buf[16] = '\0';
-        num_to_str_align(n, buf, 16);
+        num_to_str_align<16>(n, buf);
         return 16;
     }
 
     if (n >= 100000000000000lu) {
         buf[15] = '\0';
-        num_to_str_align(n, buf, 15);
+        num_to_str_align<15>(n, buf);
         return 15;
     }
 
     if (n >= 10000000000000lu) {
         buf[14] = '\0';
-        num_to_str_align(n, buf, 14);
+        num_to_str_align<14>(n, buf);
         return 14;
     }
 
     if (n >= 1000000000000lu) {
         buf[13] = '\0';
-        num_to_str_align(n, buf, 13);
+        num_to_str_align<13>(n, buf);
         return 13;
     }
 
     if (n >= 100000000000lu) {
         buf[12] = '\0';
-        num_to_str_align(n, buf, 12);
+        num_to_str_align<12>(n, buf);
         return 12;
     }
 
     if (n >= 10000000000lu) {
         buf[11] = '\0';
-        num_to_str_align(n, buf, 11);
+        num_to_str_align<11>(n, buf);
         return 11;
     }
 
     if (n >= 1000000000lu) {
         buf[10] = '\0';
-        num_to_str_align(n, buf, 10);
+        num_to_str_align<10>(n, buf);
         return 10;
     }
 
     if (n >= 100000000lu) {
         buf[9] = '\0';
-        num_to_str_align(n, buf, 9);
+        num_to_str_align<9>(n, buf);
         return 9;
     }
 
     if (n >= 10000000lu) {
         buf[8] = '\0';
-        num_to_str_align(n, buf, 8);
+        num_to_str_align<8>(n, buf);
         return 8;
     }
 
     if (n >= 1000000lu) {
         buf[7] = '\0';
-        num_to_str_align(n, buf, 7);
+        num_to_str_align<7>(n, buf);
         return 7;
     }
 
     if (n >= 100000lu) {
         buf[6] = '\0';
-        num_to_str_align(n, buf, 6);
+        num_to_str_align<6>(n, buf);
         return 6;
     }
 
     if (n >= 10000lu) {
         buf[5] = '\0';
-        num_to_str_align(n, buf, 5);
+        num_to_str_align<5>(n, buf);
         return 5;
     }
 
     buf[4] = '\0';
-    num_to_str_align(n, buf, 4);
+    num_to_str_align<4>(n, buf);
     return 4;
-}
-
-void init_decimals()
-{
-    for (int i = 0; i < 10; ++i) {
-        for (int j = 0; j < 10; ++j) {
-            for (int k = 0; k < 10; ++k) {
-                for (int l = 0; l < 10; ++l) {
-                    uint32_t num32;
-                    char *buf = (char *)&num32;
-                    buf[0] = i + '0';
-                    buf[1] = j + '0';
-                    buf[2] = k + '0';
-                    buf[3] = l + '0';
-
-                    decimals[i * 1000 + j * 100 + k * 10 + l] = num32;
-
-                    uint16_t num16;
-                    buf = (char *)&num16;
-                    buf[0] = k + '0';
-                    buf[1] = l + '0';
-                    decimals100[k * 10 + l] = num16;
-                }
-            }
-        }
-    }
 }

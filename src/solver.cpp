@@ -115,7 +115,6 @@ solution solve(const char *json)
 
 void init_solver()
 {
-    init_decimals();
     sorting_solvers.reserve(T);
     path_solvers.reserve(T);
     for (unsigned int i = 0; i < T; ++i) {
