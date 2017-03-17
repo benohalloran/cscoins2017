@@ -4,3 +4,4 @@ client
 uwebsockets/libuWS.so
 *.pem
 *.der
+.nfs*
