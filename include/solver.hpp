@@ -5,12 +5,14 @@
 #include <string>
 
 #define SET_AFFINITY 0
+#define VECTOR_LENGTH 1
 
 #define IS_ALIGNED_TO(p, s) (((uintptr_t)(p) & ((s) - 1)) == 0)
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)
 
-constexpr unsigned int MAX_NONCE = 100000000;
+static_assert(sizeof(long) == 8, "long too small");
+
 constexpr unsigned int N_BINS = 32;
 constexpr unsigned int BIN_SHIFT = 59;
 
@@ -29,7 +31,7 @@ struct challenge {
 };
 
 struct solution {
-    unsigned int nonce;
+    unsigned long nonce;
     int id;
     char hash[65];
 };

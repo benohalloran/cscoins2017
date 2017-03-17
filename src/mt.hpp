@@ -2,12 +2,33 @@
 #error "cannot be included"
 #endif
 
-constexpr unsigned int mt_vec_len = 4;
+#if VECTOR_LENGTH == 1
+typedef union {
+    uint64_t v;
+    uint64_t a[1];
+} vuint64_t;
+#else
+typedef uint64_t vnul __attribute__((vector_size(VECTOR_LENGTH *
+            sizeof(uint64_t))));
+typedef union {
+    vnul v;
+    uint64_t a[VECTOR_LENGTH];
+} vuint64_t;
+#endif
 
-typedef uint64_t vuint64_t __attribute__((vector_size(mt_vec_len * 8)));
+inline vuint64_t init_vector(const uint64_t *p)
+{
+    vuint64_t y;
+    memcpy(&y.a, p, sizeof(y.a));
+    return y;
+}
+
+inline void extract_vector(vuint64_t v, uint64_t *p)
+{
+    memcpy(p, &v.a, sizeof(v.a));
+}
 
 struct mt {
-
     static constexpr uint64_t w = 64lu;
     static constexpr uint64_t n = 312lu;
     static constexpr uint64_t m = 156lu;
@@ -26,8 +47,8 @@ struct mt {
     static constexpr uint64_t upper_mask = 0xffffffff80000000lu;
 
     mt();
-    void seed(vuint64_t s);
-    vuint64_t gen();
+    void seed(const uint64_t *s);
+    void gen(uint64_t *r);
     void twist();
 
     vuint64_t MT[n];
@@ -36,47 +57,47 @@ struct mt {
 
 mt::mt()
 {
-    index = 0;
+    uint64_t x[VECTOR_LENGTH] = {0};
+    vuint64_t z = init_vector(x);
     for (unsigned int i = 0; i < n; ++i) {
-        for (unsigned int j = 0; j < mt_vec_len; ++j) {
-            MT[i][j] = 0;
-        }
+        MT[i] = z;
     }
+    index = 0;
 }
 
-void mt::seed(vuint64_t s)
+void mt::seed(const uint64_t *s)
 {
-    index = n;
-    MT[0] = s;
+    vuint64_t v = init_vector(s);
+    MT[0].v = v.v;
     for (unsigned int i = 1; i < n; ++i) {
-        MT[i] = f * (MT[i - 1] ^ (MT[i - 1] >> (w - 2))) + i;
+        v.v = f * (v.v ^ (v.v >> (w - 2))) + i;
+        MT[i].v = v.v;
     }
+    twist();
 }
 
-vuint64_t mt::gen()
+void mt::gen(uint64_t *r)
 {
-    if (index == n) {
+    if (UNLIKELY(index == n)) {
         twist();
     }
 
     vuint64_t x = MT[index];
-    x ^= (x >> u) & d;
-    x ^= (x << s) & b;
-    x ^= (x << t) & c;
-    x ^= x >> l;
+    x.v ^= (x.v >> u) & d;
+    x.v ^= (x.v << s) & b;
+    x.v ^= (x.v << t) & c;
+    x.v ^= x.v >> l;
 
     ++index;
-
-    return x;
+    extract_vector(x, r);
 }
 
 void mt::twist()
 {
     for (unsigned int i = 0; i < n; ++i) {
-        vuint64_t x = (MT[i] & upper_mask) + (MT[(i + 1) % n] & lower_mask);
-        vuint64_t y = x >> 1;
-        y ^= a * (x % 2);
-        MT[i] = MT[(i + m) % n] ^ y;
+        vuint64_t x;
+        x.v = (MT[i].v & upper_mask) + (MT[(i + 1) % n].v & lower_mask);
+        MT[i].v = MT[(i + m) % n].v ^ ((x.v >> 1) ^ (a * (x.v % 2)));
     }
 
     index = 0;

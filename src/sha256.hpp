@@ -2,8 +2,6 @@
 #error "cannot be included"
 #endif
 
-#include "utils.hpp"
-
 #include <cassert>
 #include <cstdint>
 #include <cstring>

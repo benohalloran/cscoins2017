@@ -14,9 +14,11 @@ struct sorting_solver {
     void solve(const challenge &);
 
     thread t;
-    mt19937_64 gen;
-    bin bins[N_BINS];
     atomic<bool> should_end;
+
+private:
+    mt gen;
+    bin bins[VECTOR_LENGTH][N_BINS];
     char *solution_buf;
     unsigned char *hash;
     unsigned int solution_buf_len;
@@ -32,11 +34,14 @@ sorting_solver::sorting_solver(sorting_solver &&s)
 
 sorting_solver::sorting_solver(unsigned int k)
 {
-    for (unsigned int i = 0; i < N_BINS; ++i) {
-        bins[i].ptr = (uint64_t *)malloc(1024 * sizeof(*bins[i].ptr));
-        assert(bins[i].ptr != NULL);
-        bins[i].len = 0;
-        bins[i].cap = 1024;
+    for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+        for (unsigned int j = 0; j < N_BINS; ++j) {
+            bin *b = &bins[i][j];
+            b->ptr = (uint64_t *)malloc(1024 * sizeof(*b->ptr));
+            assert(b->ptr != NULL);
+            b->len = 0;
+            b->cap = 1024;
+        }
     }
     should_end = false;
     solution_buf = (char *)malloc((1024 * 20 + 1) * sizeof(*solution_buf));
@@ -49,6 +54,7 @@ sorting_solver::sorting_solver(unsigned int k)
 void sorting_solver::loop()
 {
     set_affinity(t_id);
+    ++ready;
 
     for (;;) {
         challenge c;
@@ -74,80 +80,104 @@ void sorting_solver::solve(const challenge &c)
             solution_buf_len * sizeof(*solution_buf));
         assert(solution_buf != NULL);
     }
-    char seed_str[64 + 20 + 1];
-    strcpy(seed_str, c.prev_hash);
-    for (unsigned int i = 0; i < N_BINS; ++i) {
-        if (bins[i].cap < c.n) {
-            bins[i].ptr = (uint64_t *)realloc(bins[i].ptr, c.n * sizeof(*bins[i].ptr));
-            assert(bins[i].ptr != NULL);
-            bins[i].len = 0;
-            bins[i].cap = c.n;
+    char seed_str[VECTOR_LENGTH][64 + 20 + 1];
+    for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+        strcpy(seed_str[i], c.prev_hash);
+    }
+    for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+        for (unsigned int j = 0; j < N_BINS; ++j) {
+            bin *b = &bins[i][j];
+            if (b->cap < c.n) {
+                b->ptr = (uint64_t *)realloc(b->ptr, c.n * sizeof(*b->ptr));
+                assert(b->ptr != NULL);
+                b->len = 0;
+                b->cap = c.n;
+            }
         }
     }
-    unsigned int nonce = t_id * 10;
-    unsigned int seed_len = num_to_str(nonce, seed_str + 64) + 64;
+    unsigned long nonce[VECTOR_LENGTH];
+    unsigned int seed_len[VECTOR_LENGTH];
+    for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+        nonce[i] = t_id * VECTOR_LENGTH * 10 + i * 10;
+        seed_len[i] = num_to_str(nonce[i], seed_str[i] + 64) + 64;
+    }
 
     for (;;) {
-        sha256(seed_str, seed_len, hash);
-        uint64_t seed = *(uint64_t *)hash;
+        uint64_t seed[VECTOR_LENGTH];
+        for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+            sha256(seed_str[i], seed_len[i], hash);
+            seed[i] = *(uint64_t *)hash;
+        }
         gen.seed(seed);
         for (unsigned int i = 0; i < c.n; ++i) {
-            uint64_t r = gen();
-            unsigned int index = r >> BIN_SHIFT;
-            bins[index].ptr[bins[index].len++] = r;
-        }
-        char *cur_solution_buf = solution_buf;
-
-        if (c.type == TYPE_SORTED_LIST) {
-            for (unsigned int i = 0; i < N_BINS; ++i) {
-                fast_sort(bins[i].ptr, bins[i].len);
-
-                for (unsigned int j = 0; j < bins[i].len; ++j) {
-                    cur_solution_buf += num_to_str(bins[i].ptr[j],
-                        cur_solution_buf);
-                }
-            }
-        } else {
-            for (unsigned int i = N_BINS - 1; i < N_BINS; --i) {
-                fast_sort(bins[i].ptr, bins[i].len);
-
-                for (unsigned int j = bins[i].len - 1; j < bins[i].len; --j) {
-                    cur_solution_buf += num_to_str(bins[i].ptr[j],
-                        cur_solution_buf);
-                }
+            uint64_t r[VECTOR_LENGTH];
+            gen.gen(r);
+            for (unsigned int j = 0; j < VECTOR_LENGTH; ++j) {
+                unsigned int index = r[j] >> BIN_SHIFT;
+                bin *b = &bins[j][index];
+                b->ptr[b->len++] = r[j];
             }
         }
 
-        sha256(solution_buf, cur_solution_buf - solution_buf, hash);
-        if (check_prefix(hash, c.prefix4, c.hash_prefix, c.hash_prefix_len)) {
-            lock_guard<mutex> lk (mtx);
-            if (should_end) {
-                should_end = false;
+        for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+            char *cur_solution_buf = solution_buf;
+
+            if (c.type == TYPE_SORTED_LIST) {
+                for (unsigned int j = 0; j < N_BINS; ++j) {
+                    bin *b = &bins[i][j];
+                    fast_sort(b->ptr, b->len);
+
+                    for (unsigned int k = 0; k < b->len; ++k) {
+                        cur_solution_buf += num_to_str(b->ptr[k],
+                            cur_solution_buf);
+                    }
+                }
+            } else {
+                for (unsigned int j = N_BINS - 1; j < N_BINS; --j) {
+                    bin *b = &bins[i][j];
+                    fast_sort(b->ptr, b->len);
+
+                    for (unsigned int k = 0; k < b->len; ++k) {
+                        cur_solution_buf += num_to_str(b->ptr[k],
+                            cur_solution_buf);
+                    }
+                }
+            }
+
+            sha256(solution_buf, cur_solution_buf - solution_buf, hash);
+            if (check_prefix(hash, c.prefix4, c.hash_prefix, c.hash_prefix_len)) {
+                lock_guard<mutex> lk (mtx);
+                if (should_end) {
+                    should_end = false;
+                    return;
+                }
+
+                our_solution.id = c.id;
+                our_solution.nonce = nonce[i];
+                hash_str(hash, our_solution.hash);
+                new_solution = true;
+                solution_cv.notify_one();
                 return;
             }
-
-            our_solution.id = c.id;
-            our_solution.nonce = nonce;
-            hash_str(hash, our_solution.hash);
-            new_solution = true;
-            solution_cv.notify_one();
-            return;
         }
 
         if (UNLIKELY(should_end)) {
             should_end = false;
             return;
         }
-        for (unsigned int i = 0; i < N_BINS; ++i) {
-            bins[i].len = 0;
+        for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+            for (unsigned int j = 0; j < N_BINS; ++j) {
+                bins[i][j].len = 0;
+            }
         }
-        ++nonce;
-        assert(nonce > 0);
-        if (seed_str[seed_len - 1] == '9') {
-            nonce += 10 * (T - 1);
-            seed_len = num_to_str(nonce, seed_str + 64) + 64;
-        } else {
-            ++seed_str[seed_len - 1];
+        for (unsigned int i = 0; i < VECTOR_LENGTH; ++i) {
+            ++nonce[i];
+            if (seed_str[i][seed_len[i] - 1] == '9') {
+                nonce[i] += 10 * VECTOR_LENGTH * (T - 1);
+                seed_len[i] = num_to_str(nonce[i], seed_str[i] + 64) + 64;
+            } else {
+                ++seed_str[i][seed_len[i] - 1];
+            }
         }
     }
 }

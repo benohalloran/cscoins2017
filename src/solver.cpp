@@ -37,6 +37,7 @@ challenge current_challenge;
 solution our_solution;
 mutex mtx;
 condition_variable sorting_cv, path_cv, solution_cv;
+atomic<unsigned int> ready;
 
 #if SET_AFFINITY
 void set_affinity(int cpu)
@@ -61,7 +62,7 @@ inline void set_affinity(int cpu)
 #include "sorting_solver.hpp"
 #include "path_solver.hpp"
 
-inline void end_all_solvers()
+void end_all_solvers()
 {
     for (auto &solver : sorting_solvers) {
         solver.should_end = true;
@@ -116,6 +117,7 @@ solution solve(const char *json)
 
 void init_solver()
 {
+    ready = 0;
     sorting_solvers.reserve(T);
     path_solvers.reserve(T);
     for (unsigned int i = 0; i < T; ++i) {
@@ -131,6 +133,7 @@ void init_solver()
         //     path_solvers[i].loop();
         // });
     }
+    while (ready != T) { }
 }
 
 #ifdef TESTING
@@ -146,7 +149,7 @@ get_time()
 
 void test_solver()
 {
-    for (int align = 0; align <= 4; ++align) {
+    for (int align = 0; align <= 8; ++align) {
         char mem1[1024 + 8];
         char *buf = mem1 + 8 - (size_t)mem1 % 8 + align;
 
@@ -291,20 +294,21 @@ void test_solver()
 
     vector<uint64_t> s1;
     vector<uint64_t> s2;
-    mt19937_64 m1[mt_vec_len];
+    mt19937_64 m1[VECTOR_LENGTH];
     mt m2;
-    vuint64_t vs;
-    for (unsigned int j = 0; j < mt_vec_len; ++j) {
+    uint64_t seeds[VECTOR_LENGTH];
+    for (unsigned int j = 0; j < VECTOR_LENGTH; ++j) {
         uint64_t seed = rand();
+        seeds[j] = seed;
         m1[j].seed(seed);
-        vs[j] = seed;
     }
-    m2.seed(vs);
+    m2.seed(seeds);
     for (unsigned int i = 0; i < 1000; ++i) {
-        vuint64_t v = m2.gen();
-        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+        uint64_t r[VECTOR_LENGTH];
+        m2.gen(r);
+        for (unsigned int j = 0; j < VECTOR_LENGTH; ++j) {
             s1.push_back(m1[j]());
-            s2.push_back(v[j]);
+            s2.push_back(r[j]);
         }
     }
     assert(s1.size() == s2.size());
@@ -313,6 +317,7 @@ void test_solver()
     }
 
     constexpr unsigned int max_iter = 1024 * 1024;
+    constexpr unsigned int max_elem = 256;
     unsigned long start1, end1, start2, end2;
     get_time();
     get_time();
@@ -320,31 +325,32 @@ void test_solver()
 
     start1 = get_time();
     for (unsigned int i = 0; i < max_iter; ++i) {
-        vuint64_t s;
-        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+        uint64_t s[VECTOR_LENGTH];
+        for (unsigned int j = 0; j < VECTOR_LENGTH; ++j) {
             s[j] = (uint64_t)-i;
         }
         m2.seed(s);
-        for (unsigned int j = 0; j < 256; ++j) {
-            m2.gen();
+        for (unsigned int j = 0; j < max_elem; ++j) {
+            uint64_t r[VECTOR_LENGTH];
+            m2.gen(r);
         }
     }
     end1 = get_time();
 
     start2 = get_time();
     for (unsigned int i = 0; i < max_iter; ++i) {
-        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+        for (unsigned int j = 0; j < VECTOR_LENGTH; ++j) {
             m1[j].seed((uint64_t)-i);
 
-            for (unsigned int k = 0; k < 256; ++k) {
+            for (unsigned int k = 0; k < max_elem; ++k) {
                 m1[j]();
             }
         }
     }
     end2 = get_time();
 
-    printf("%f %f\n", (double)(end1 - start1) / 1000000, (double)(end2 -
-            start2) / 1000000);
+    // printf("%f %f\n", (double)(end1 - start1) / 1000000, (double)(end2 -
+    //         start2) / 1000000);
 
     // assert(end1 - start1 < end2 - start2);
 }
