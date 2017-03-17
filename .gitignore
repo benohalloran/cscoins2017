@@ -5,5 +5,5 @@ uwebsockets/libuWS.so
 *.pem
 *.der
 .nfs*
-
+*.sigc
 *.log
