@@ -193,6 +193,10 @@ void MinerClient::initWallet(string name) {
     transform(wallet_sig.begin(), wallet_sig.end(), wallet_sig.begin(), ::tolower);
     transform(wallet_id.begin(), wallet_id.end(), wallet_id.begin(), ::tolower);
 
+    std::ofstream out("wallet.sig");
+    out << wallet_sig;
+    out.close();
+
     this->wallet_name = name;
     this->wallet_id = wallet_id;
     this->public_key = pubkey_pem;
