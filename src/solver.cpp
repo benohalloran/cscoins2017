@@ -54,6 +54,7 @@ inline void set_affinity(int cpu)
 }
 #endif
 
+#include "mt.hpp"
 #include "num_to_str.hpp"
 #include "sorting.hpp"
 #include "sha256.hpp"
@@ -133,6 +134,16 @@ void init_solver()
 }
 
 #ifdef TESTING
+
+static unsigned long
+get_time()
+{
+    struct timespec ts;
+    int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
+    assert(ret == 0);
+    return ts.tv_sec * 1000000000lu + ts.tv_nsec;
+}
+
 void test_solver()
 {
     for (int align = 0; align <= 4; ++align) {
@@ -277,5 +288,65 @@ void test_solver()
     assert(c.n == 20);
     assert(c.hash_prefix_len == 4);
     assert(c.prefix4 == 0xf894);
+
+    vector<uint64_t> s1;
+    vector<uint64_t> s2;
+    mt19937_64 m1[mt_vec_len];
+    mt m2;
+    vuint64_t vs;
+    for (unsigned int j = 0; j < mt_vec_len; ++j) {
+        uint64_t seed = rand();
+        m1[j].seed(seed);
+        vs[j] = seed;
+    }
+    m2.seed(vs);
+    for (unsigned int i = 0; i < 1000; ++i) {
+        vuint64_t v = m2.gen();
+        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+            s1.push_back(m1[j]());
+            s2.push_back(v[j]);
+        }
+    }
+    assert(s1.size() == s2.size());
+    for (unsigned int i = 0; i < s1.size(); ++i) {
+        assert(s1[i] == s2[i]);
+    }
+
+    constexpr unsigned int max_iter = 1024 * 1024;
+    unsigned long start1, end1, start2, end2;
+    get_time();
+    get_time();
+    get_time();
+
+    start1 = get_time();
+    for (unsigned int i = 0; i < max_iter; ++i) {
+        vuint64_t s;
+        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+            s[j] = (uint64_t)-i;
+        }
+        m2.seed(s);
+        for (unsigned int j = 0; j < 256; ++j) {
+            m2.gen();
+        }
+    }
+    end1 = get_time();
+
+    start2 = get_time();
+    for (unsigned int i = 0; i < max_iter; ++i) {
+        for (unsigned int j = 0; j < mt_vec_len; ++j) {
+            m1[j].seed((uint64_t)-i);
+
+            for (unsigned int k = 0; k < 256; ++k) {
+                m1[j]();
+            }
+        }
+    }
+    end2 = get_time();
+
+    printf("%f %f\n", (double)(end1 - start1) / 1000000, (double)(end2 -
+            start2) / 1000000);
+
+    // assert(end1 - start1 < end2 - start2);
 }
+
 #endif
