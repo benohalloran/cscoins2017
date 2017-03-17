@@ -15,6 +15,7 @@
 #include "coinslib/commands.hpp"
 #include "solver.hpp"
 #include "rapidjson/document.h"
+#include "rapidjson/pointer.h"
 #include <cassert>
 #include <regex>
 #define ASSERT assert
@@ -327,31 +328,18 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
 
     hub->onMessage([this](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
-        Document response;
-
         std::cout << "incoming from server: " << std::string(message, length) << std::endl;
+
+        Document d;
+        d.Parse(string(message, length).c_str()); // only get json
+        assert(d.IsObject());
+
+        bool ci  = d.HasMember("challenge_id");
+        bool wi = d.HasMember("wallet_id");
         
 
-        response.Parse(message);
-        if(response.IsNull()) {
-            cout << "null response or can't parse" << endl;
-            /*auto getChallenge = GetCurrentChallenge();
-            string command = getChallenge.serialize();
-            const char *payload = command.c_str();
-            int payloadlength = strlen(payload);
-            ws.send(payload, payloadlength, opcode); */
-        } else {
-        assert(response.IsObject());
-        bool ci = response.HasMember("challenge_id");
-        bool cs = response.HasMember("challenge_solution");
-        bool rw =response.HasMember("register_wallet");
-        bool ts  = response.HasMember("transactions");
-        bool ct = response.HasMember("create_transaction");
-        bool sub = response.HasMember("submission");
-        bool ca = response.HasMember("ca_server_info");
-        bool wi = response.HasMember("wallet_id");
-        
         if( wi  ) {
+            cout << "wallet registered" << endl;
             cout << "getting current challenge" << endl;
             auto getChallenge = GetCurrentChallenge();
             string command = getChallenge.serialize();
@@ -359,9 +347,9 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
             int payloadlength = strlen(payload);
             ws.send(payload, payloadlength, opcode); 
             cout << "sent challenge request" << endl;
-        } else if ( ci ) {
+        } else if ( ci  ) {
             cout << "solving challenge" << endl;
-            solution s = solve(message);
+            solution s = solve(string(message, length).c_str());
             auto submission = Submission(this->wallet_id, to_string(s.nonce));
             std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
             std::cout << submission << std::endl;
@@ -373,8 +361,13 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
             ws.send(payload, payloadlength, opcode);
             cout << "sent submission" << endl;
         } else {
-            cout << "not implemented yet" << endl;
-        }
+            cout << "getting current challenge" << endl;
+            auto getChallenge = GetCurrentChallenge();
+            string command = getChallenge.serialize();
+            const char *payload = command.c_str();
+            int payloadlength = strlen(payload);
+            ws.send(payload, payloadlength, opcode); 
+            cout << "sent challenge request" << endl;
 
         }
 
