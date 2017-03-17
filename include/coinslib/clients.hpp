@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include <uWS/uWS.h>
+#include <openssl/rsa.h>
 
 using namespace std;
 
@@ -17,18 +18,14 @@ class BaseClient {
        int port_;
        bool ssl_;
        uWS::Hub *hub;
-/*     int public_key; 
-       int private_key;
-       string wallet_id;
-       string wallet_name; */
-
 };
 
 class MinerClient : public BaseClient {
     public:
-        MinerClient(string hostname="localhost", int port=8989, bool ssl=true) : BaseClient(hostname, port, ssl) {}
+        MinerClient(string hostname, int port, bool ssl); 
         void connect();
-        string signMessage(string message);
+        string signMessage(string name);
+       /* string signMessage(string message);
         string getCurrentChallenge();
         string getChallengeSolution(int challenge_id);
         string registerWallet(string name);
@@ -38,5 +35,11 @@ class MinerClient : public BaseClient {
         string submission(string wallet_id, string nonce);
         string getCAInfo();  
         string getTransactions(int start, int count);
-        string createTransaction(string recipient, double amount);
+        string createTransaction(string recipient, double amount);*/
+        void initWallet(string name);
+    private:
+        string wallet_name;
+        string wallet_id;
+        string public_key;
+        string private_key;
 };

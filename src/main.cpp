@@ -19,9 +19,6 @@ int main(int argc, char** argv)
     bool ssl = true;
     MinerClient client = MinerClient(hostname, port, ssl);
     cout << client << endl;
+    client.initWallet("test");
     client.connect();
-    cout << "Connecting client..." << endl;
-
-
-    cout << "Shutting down client..." << std::endl;
 }
