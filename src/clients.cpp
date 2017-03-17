@@ -161,13 +161,16 @@ void MinerClient::initWallet(string name) {
     //cout << "pub key pem: " << pubkey_pem << endl;
     //cout << "pub key der: " << pubkey_der << endl;
 
+    const int pycrypto_len = 22;
+    const char *pycrypto_tags = "\x30\x81\x9f\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00\x03\x81\x8d\x00";
+
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
+    SHA256_Update(&sha256, pycrypto_tags, pycrypto_len);
     SHA256_Update(&sha256, pubkey_der.c_str(), pubkey_der.size());
     SHA256_Final(hash, &sha256);
-
-
+       
     unsigned char* sigret = nullptr;
     sigret = reinterpret_cast<unsigned char *>( malloc(RSA_size(rsa.get())));
     unsigned int siglen = 0;
@@ -320,7 +323,7 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         std::cout << std::string(message, length) << std::endl;
 
 
- /*     solution s = solve(message);
+        /*solution s = solve(message);
         auto submission = Submission(to_string(s.id), to_string(s.nonce));
         std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
         std::cout << submission << std::endl;
@@ -329,7 +332,7 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         const char *payload = command.c_str();
         int payloadlength = strlen(payload);
 
-        ws.send(payload, payloadlength, opcode); */
+        ws.send(payload, payloadlength, opcode);*/ 
 
         ws.close(1000);
     });
