@@ -2,3 +2,5 @@
 *.d
 client
 uwebsockets/libuWS.so
+*.pem
+*.der
