@@ -62,3 +62,8 @@ class GetCentralAuthorityServerInformation : public BaseCommand {
          GetCentralAuthorityServerInformation() : BaseCommand("ca_server_info", {}) {}
 };
 
+class Close : public BaseCommand {
+     public:
+         Close() : BaseCommand("close", {}) {}
+};
+

@@ -3,7 +3,7 @@ from Crypto.Hash import SHA256
 from Crypto import Random
 from Crypto.Signature import PKCS1_v1_5
 
-signature =  open('wallet.sig', 'rb').read() 
+signature =  open('wallet.sig').read() 
 
 pubkey_pem = open('rsa-public.pem').read() 
 pubkey_der_fromfile = open('rsa-public.der', 'rb').read()

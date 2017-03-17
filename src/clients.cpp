@@ -14,7 +14,9 @@
 #include "coinslib/clients.hpp"
 #include "coinslib/commands.hpp"
 #include "solver.hpp"
+#include "rapidjson/document.h"
 #include <cassert>
+#include <regex>
 #define ASSERT assert
 
 using std::unique_ptr;
@@ -24,6 +26,7 @@ using EVP_KEY_ptr = std::unique_ptr<EVP_PKEY, decltype(&::EVP_PKEY_free)>;
 using BIO_FILE_ptr = std::unique_ptr<BIO, decltype(&::BIO_free)>;
 
 using namespace std;
+using namespace rapidjson;
 
 
 BaseClient::BaseClient(string hostname, int port, bool ssl) {
@@ -322,23 +325,59 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
     });
 
 
-    hub->onMessage([](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
+    hub->onMessage([this](uWS::WebSocket<uWS::CLIENT> ws, char *message, size_t length, uWS::OpCode opCode) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
-        std::cout << std::string(message, length) << std::endl;
+        Document response;
 
+        std::cout << "incoming from server: " << std::string(message, length) << std::endl;
+        
 
-        /*solution s = solve(message);
-        auto submission = Submission(to_string(s.id), to_string(s.nonce));
-        std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
-        std::cout << submission << std::endl;
-        string command = submission.serialize();
+        response.Parse(message);
+        if(response.IsNull()) {
+            cout << "null response or can't parse" << endl;
+            /*auto getChallenge = GetCurrentChallenge();
+            string command = getChallenge.serialize();
+            const char *payload = command.c_str();
+            int payloadlength = strlen(payload);
+            ws.send(payload, payloadlength, opcode); */
+        } else {
+        assert(response.IsObject());
+        bool ci = response.HasMember("challenge_id");
+        bool cs = response.HasMember("challenge_solution");
+        bool rw =response.HasMember("register_wallet");
+        bool ts  = response.HasMember("transactions");
+        bool ct = response.HasMember("create_transaction");
+        bool sub = response.HasMember("submission");
+        bool ca = response.HasMember("ca_server_info");
+        bool wi = response.HasMember("wallet_id");
+        
+        if( wi  ) {
+            cout << "getting current challenge" << endl;
+            auto getChallenge = GetCurrentChallenge();
+            string command = getChallenge.serialize();
+            const char *payload = command.c_str();
+            int payloadlength = strlen(payload);
+            ws.send(payload, payloadlength, opcode); 
+            cout << "sent challenge request" << endl;
+        } else if ( ci ) {
+            cout << "solving challenge" << endl;
+            solution s = solve(message);
+            auto submission = Submission(this->wallet_id, to_string(s.nonce));
+            std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
+            std::cout << submission << std::endl;
+            string command = submission.serialize();
 
-        const char *payload = command.c_str();
-        int payloadlength = strlen(payload);
+            const char *payload = command.c_str();
+            int payloadlength = strlen(payload);
 
-        ws.send(payload, payloadlength, opcode);*/ 
+            ws.send(payload, payloadlength, opcode);
+            cout << "sent submission" << endl;
+        } else {
+            cout << "not implemented yet" << endl;
+        }
 
-        ws.close(1000);
+        }
+
     });
 
     hub->onDisconnection([](uWS::WebSocket<uWS::CLIENT> ws, int code, char *message, size_t length) {
