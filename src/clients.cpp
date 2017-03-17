@@ -201,6 +201,10 @@ void MinerClient::initWallet(string name) {
     out << wallet_sig;
     out.close();
 
+    std::ofstream out2("wallet_id.txt");
+    out2 << wallet_id;
+    out2.close();
+
     this->wallet_name = name;
     this->wallet_id = wallet_id;
     this->public_key = pubkey_pem;
@@ -336,6 +340,7 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
 
         bool ci  = d.HasMember("challenge_id");
         bool wi = d.HasMember("wallet_id");
+        bool ts = d.HasMember("transactions");
         
 
         if( wi  ) {
@@ -360,6 +365,10 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
 
             ws.send(payload, payloadlength, opcode);
             cout << "sent submission" << endl;
+        } else if ( ts ) {
+            std::ofstream out("transactions.txt");
+            out << string(message, length);
+            out.close();
         } else {
             cout << "getting current challenge" << endl;
             auto getChallenge = GetCurrentChallenge();
@@ -389,6 +398,13 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         const char *payload = command.c_str();
         int payloadlength = strlen(payload);
 
+        //string sample_id = "eb023422a6f0582b1655c223d4ca8f13f67f111ad7e09e6b5d1545f33b0c5872";
+        GetTransactions trans = GetTransactions(0,100);
+        string command2 = trans.serialize();
+        const char *payload2 = command2.c_str();
+        int payload2length = strlen(payload2);
+
+
         switch ((long) ws.getUserData()) {
         case 4:
             std::cout << "Client established a remote connection over non-SSL" << std::endl;
@@ -398,6 +414,7 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
             std::cout << "Client established a remote connection over SSL" << std::endl;
             std::cout << "sending payload: " << payload << std::endl;
             ws.send(payload, payloadlength, opcode);
+            ws.send(payload2, payload2length, opcode);
             //ws.close(1000);
             break;
         default:

@@ -7,4 +7,5 @@ uwebsockets/libuWS.so
 .nfs*
 *.sig
 *.log
-
+transactions.txt
+wallet_id.txt
