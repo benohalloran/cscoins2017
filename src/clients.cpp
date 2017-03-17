@@ -175,14 +175,6 @@ void MinerClient::initWallet(string name) {
     RSA_sign(NID_sha256, hash, SHA256_DIGEST_LENGTH, sigret, &siglen, rsa.get());
 
 
-    int check = RSA_verify(NID_sha256, hash, SHA256_DIGEST_LENGTH, sigret, siglen, rsa.get());
-
-    if(!check) {
-        cout << "verify failed" << endl;
-    } else {
-        cout << "verify good" << endl;
-    }
-
     BIGNUM *hash_bn = BN_new();
     BIGNUM *sig_bn = BN_new();
     char *hash_str;
@@ -198,45 +190,6 @@ void MinerClient::initWallet(string name) {
     transform(wallet_sig.begin(), wallet_sig.end(), wallet_sig.begin(), ::tolower);
     transform(wallet_id.begin(), wallet_id.end(), wallet_id.begin(), ::tolower);
 
-    cout << "wallet_id: " << wallet_id << endl;
-
-/*
-    unsigned char hashp[SHA256_DIGEST_LENGTH];
-    std::stringstream converter;
-    std::istringstream unsigstream(wallet_sig);
-    std::vector<unsigned char> bytes;
-
-    std::string word;
-    while( unsigstream >> word )
-    {
-        unsigned char temp;
-        converter << std::hex << word;
-        converter >> temp;
-        bytes.push_back( temp );
-    } 
-    std::copy( bytes.begin(), bytes.end(), hashp );
-
-    if( strcmp( (char *) &hashp[0] , (char *)&hash[0]) == 0) {
-        cout << "hashes equal" << endl;
-    } else { cout << "not equal hashes" << endl; }
-
-    BIGNUM *input_hash = BN_new();
-    int input_hash_length = BN_hex2bn(&input_hash, wallet_id);
-    input_hash_length = (input_hash_length + 1) / 2; // BN_hex2bn() returns number of hex digits
-    unsigned char *hash_buffer = (unsigned char*)malloc(input_hash_length);
-    retval = BN_bn2bin(input_hash, hash_buffer);
-
-
-
-
-    int check2 = RSA_verify(NID_sha256, hashp, SHA256_DIGEST_LENGTH, sigret, siglen, rsa.get());
-
-    if(!check2) {
-        cout << "verify failed for check2" << endl;
-    } else {
-        cout << "verify good" << endl;
-    }
-*/
     this->wallet_name = name;
     this->wallet_id = wallet_id;
     this->public_key = pubkey_pem;
@@ -275,6 +228,57 @@ string MinerClient::signMessage(string message) {
     }
 
     return string(ss.str());
+}
+
+
+bool MinerClient::testWalletSig() {
+
+
+    BIO_FILE_ptr pub_der(BIO_new_file("rsa-public_test.der", "w"), ::BIO_free);
+
+    string pubkey_pem = this->public_key;
+
+    RSA *rsa = nullptr;
+    BIO *b = BIO_new(BIO_s_mem());
+    BIO_puts(b, pubkey_pem.c_str());
+    rsa = PEM_read_bio_RSAPublicKey(b, nullptr, nullptr, nullptr);
+
+    int rc = i2d_RSAPublicKey_bio(pub_der.get(), rsa);
+    BIO_flush(pub_der.get());
+
+    std::ifstream ifder("rsa-public_test.der");
+    string pubkey_der((std::istreambuf_iterator<char>(ifder)), 
+            std::istreambuf_iterator<char>());
+
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, pubkey_der.c_str(), pubkey_der.size());
+    SHA256_Final(hash, &sha256);
+
+    // converting back to see if the sig verify passes
+    BIGNUM *input_hash = BN_new();
+    BIGNUM *input_sig = BN_new();
+    int input_hash_length = BN_hex2bn(&input_hash, this-> wallet_id.c_str());
+    int input_sig_length = BN_hex2bn(&input_sig, this->wallet_sig.c_str());
+    input_hash_length = (input_hash_length + 1) / 2; // BN_hex2bn() returns number of hex digits
+    input_sig_length = (input_sig_length + 1) / 2; // BN_hex2bn() returns number of hex digits
+    unsigned char *hash_buffer = (unsigned char*)malloc(input_hash_length);
+    unsigned char *sig_buffer = (unsigned char*)malloc(input_sig_length);
+    int retval_hash = BN_bn2bin(input_hash, hash_buffer);
+    int retval_sig  = BN_bn2bin(input_sig, sig_buffer);
+
+    int check2 = RSA_verify(NID_sha256, hash, SHA256_DIGEST_LENGTH, sig_buffer, input_sig_length, rsa);
+
+    RSA_free(rsa);
+
+    if(!check2) {
+        cout << "verify of signature for wallet_id failed" << endl;
+        return false;
+    } 
+    
+    cout << "verify of signature for wallet_id passed" << endl;
+    return true;
 }
 
 

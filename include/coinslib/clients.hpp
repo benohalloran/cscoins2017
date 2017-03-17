@@ -25,6 +25,7 @@ class MinerClient : public BaseClient {
         MinerClient(string hostname, int port, bool ssl); 
         void connect();
         string signMessage(string message);
+        bool testWalletSig();
        /* string signMessage(string message);
         string getCurrentChallenge();
         string getChallengeSolution(int challenge_id);

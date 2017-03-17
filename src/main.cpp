@@ -20,5 +20,6 @@ int main(int argc, char** argv)
     MinerClient client = MinerClient(hostname, port, ssl);
     cout << client << endl;
     client.initWallet("test");
+    bool check = client.testWalletSig();
     client.connect();
 }
