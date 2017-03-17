@@ -169,15 +169,28 @@ void MinerClient::initWallet(string name) {
     stringstream ss;
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
     {
-        ss << hex << setw(2) << setfill('0') << (int)hash[i];
+        ss << hex << setw(2) << setfill('0') << (unsigned int) hash[i];
     }
-   
+
+    unsigned char* sigret = NULL;
+    sigret = (unsigned char *) malloc(RSA_size(rsa.get()));
+    unsigned int siglen = 0;
+    RSA_sign(NID_sha256, hash, 32, sigret, &siglen, rsa.get());
+
+    stringstream ss2;
+    for(int i = 0; i < siglen; i++)
+    {
+        ss2 << hex << setw(2) << setfill('0') << (unsigned int) sigret[i];
+    }
+
+    string wallet_sig = string(ss2.str());
     string wallet_id = string(ss.str());
-        
+    
     this->wallet_name = name;
     this->wallet_id = wallet_id;
     this->public_key = pubkey_pem;
     this->private_key = privkey_pem;
+    this->wallet_sig = wallet_sig;
 }
 
 string MinerClient::signMessage(string message) {
@@ -203,7 +216,7 @@ string MinerClient::signMessage(string message) {
     stringstream ss;
     for(int i = 0; i < siglen; i++)
     {
-        ss << hex << setw(2) << setfill('0') << (int)sigret[i];
+        ss << hex << setw(2) << setfill('0') << sigret[i];
     }
 
     return string(ss.str());
@@ -270,10 +283,9 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
     hub->onConnection([this](uWS::WebSocket<uWS::CLIENT> ws, uWS::HttpRequest req) {
         uWS::OpCode opcode = uWS::OpCode::TEXT;
         string name = this->wallet_name;
-        string signature = this->signMessage(this->wallet_id);
+        string signature = this->wallet_sig;//this->signMessage(this->wallet_id);
         string key = this->public_key;
         RegisterWallet registerWallet = RegisterWallet(name, key, signature);
-        std::cout << registerWallet << std::endl;
         string command = registerWallet.serialize();
         
         const char *payload = command.c_str();
