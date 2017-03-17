@@ -294,7 +294,7 @@ bool MinerClient::testWalletSig() {
 
 
 MinerClient::MinerClient(string hostname, int port, bool ssl) {
-
+    init_solver();
    this->hostname_ = hostname;
     this->port_ = port;
     this->ssl_ = ssl;
