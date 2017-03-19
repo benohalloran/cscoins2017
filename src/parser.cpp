@@ -4,7 +4,8 @@
 
 using namespace rapidjson;
 
-static int from_hex(char c)
+static int
+from_hex(char c)
 {
     switch (c) {
     case '0':
@@ -30,7 +31,8 @@ static int from_hex(char c)
     }
 }
 
-void parse(const char *json, challenge &c)
+void
+parse(const char *json, challenge &c)
 {
     Document d;
     d.Parse(json);
@@ -64,7 +66,7 @@ void parse(const char *json, challenge &c)
         assert((hash_str[i] >= '0' && hash_str[i] <= '9')
             || (hash_str[i] >= 'a' && hash_str[i] <= 'f'));
     }
-    strcpy(c.prev_hash, hash_str);
+    strcpy((char *)c.prev_hash.c, hash_str);
 
     assert(d.HasMember("hash_prefix"));
     const Value &hash_prefix = d["hash_prefix"];
@@ -76,7 +78,7 @@ void parse(const char *json, challenge &c)
         assert((hash_prefix_str[i] >= '0' && hash_prefix_str[i] <= '9')
             || (hash_prefix_str[i] >= 'a' && hash_prefix_str[i] <= 'f'));
     }
-    strcpy(c.hash_prefix, hash_prefix_str);
+    strcpy((char *)c.hash_prefix.c, hash_prefix_str);
 
     c.prefix4 = 0;
     if (c.hash_prefix_len >= 4) {

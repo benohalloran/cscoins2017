@@ -2,22 +2,16 @@
 #error "cannot be included"
 #endif
 
-#include "utils.hpp"
-
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 
 #include <openssl/sha.h>
 
-// TODO - use asm if available
-inline void sha256(const char *str, size_t len, unsigned char *hash)
-{
-    SHA256((const unsigned char *)str, len, hash);
-}
+#define sha256(s,l,h) SHA256((const unsigned char *)(s), (l), (h).c)
 
 #define H(s) (s[0] | (s[1] << 8))
-constexpr uint64_t hex_vals[] = {
+constexpr uint16_t hex_vals[] = {
     H("00"), H("01"), H("02"), H("03"), H("04"), H("05"), H("06"), H("07"),
     H("08"), H("09"), H("0a"), H("0b"), H("0c"), H("0d"), H("0e"), H("0f"),
     H("10"), H("11"), H("12"), H("13"), H("14"), H("15"), H("16"), H("17"),
@@ -53,33 +47,29 @@ constexpr uint64_t hex_vals[] = {
 };
 #undef H
 
-void hash_str(const unsigned char *hash, char *str)
+void
+hash_str(const buffer<32> &hash, buffer<65> &str)
 {
-    assert(IS_ALIGNED_TO(str, 2));
-    uint16_t *str2 = (uint16_t *)str;
     for (unsigned int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        str2[i] = hex_vals[hash[i]];
+        str.s[i] = hex_vals[hash.c[i]];
     }
-    str[SHA256_DIGEST_LENGTH * 2] = '\0';
+    str.c[SHA256_DIGEST_LENGTH * 2] = '\0';
 }
 
-inline bool check_prefix(const unsigned char *hash, uint16_t prefix4,
-    const char *prefix, unsigned int len)
+inline bool
+check_prefix(const buffer<32> &hash, uint16_t prefix4,
+    const buffer<65> &prefix, unsigned int len)
 {
-    assert(IS_ALIGNED_TO(hash, 2));
-    assert(IS_ALIGNED_TO(prefix, 2));
-
     if (LIKELY(len >= 4)) {
-        if (*(uint16_t *)hash != prefix4) {
+        if (hash.s[0] != prefix4) {
             return false;
         }
     } else {
-        uint16_t str2[2];
-        char *str = (char *)str2;
-        str2[0] = hex_vals[hash[0]];
-        str2[1] = hex_vals[hash[1]];
+        buffer<4> str;
+        str.s[0] = hex_vals[hash.c[0]];
+        str.s[1] = hex_vals[hash.c[1]];
         for (unsigned int i = 0; i < len; ++i) {
-            if (str[i] != prefix[i]) {
+            if (str.c[i] != prefix.c[i]) {
                 return false;
             }
         }
@@ -92,10 +82,9 @@ inline bool check_prefix(const unsigned char *hash, uint16_t prefix4,
             return true;
         }
 
-        uint16_t str2;
-        char *str = (char *)&str2;
-        str2 = hex_vals[hash[i]];
-        if (str[0] != prefix[index]) {
+        buffer<2> str;
+        str.s = hex_vals[hash.c[i]];
+        if (str.c[0] != prefix.c[index]) {
             return false;
         }
 
@@ -104,7 +93,7 @@ inline bool check_prefix(const unsigned char *hash, uint16_t prefix4,
             return true;
         }
 
-        if (str[1] != prefix[index]) {
+        if (str.c[1] != prefix.c[index]) {
             return false;
         }
     }
