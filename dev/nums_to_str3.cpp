@@ -9,16 +9,15 @@ static char decimals[10000][5];
 #define FILL_NEXT(j) do { \
     const unsigned int k = x % 10000; \
     x /= 10000; \
-    mods[m + j] = k; \
-    __builtin_prefetch(&decimals[k]); \
+    memcpy(p, decimals[k], 4); \
+    p += decimals[k][4]; \
 } while (0)
 
 unsigned int NOINLINE
 nums_to_str3(const uint64_t * RESTRICT nums, unsigned int n,
     char * RESTRICT buf)
 {
-    unsigned int mods[n * 5];
-    unsigned int m = 0;
+    char *p = buf;
     for (unsigned int i = 0; i < n; ++i) {
         uint64_t x = nums[i];
         if (x >= 10000000000000000lu) {
@@ -27,33 +26,21 @@ nums_to_str3(const uint64_t * RESTRICT nums, unsigned int n,
             FILL_NEXT(2);
             FILL_NEXT(3);
             FILL_NEXT(4);
-            m += 5;
         } else if (x >= 1000000000000lu) {
             FILL_NEXT(0);
             FILL_NEXT(1);
             FILL_NEXT(2);
             FILL_NEXT(3);
-            m += 4;
         } else if (x >= 100000000lu) {
             FILL_NEXT(0);
             FILL_NEXT(1);
             FILL_NEXT(2);
-            m += 3;
         } else if (x >= 10000lu) {
             FILL_NEXT(0);
             FILL_NEXT(1);
-            m += 2;
         } else {
             FILL_NEXT(0);
-            ++m;
         }
-    }
-
-    char *p = buf;
-    for (unsigned int i = 0; i < m; ++i) {
-        const char *d = decimals[mods[i]];
-        memcpy(p, d, 4);
-        p += d[4];
     }
 
     return p - buf;
