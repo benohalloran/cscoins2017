@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <atomic>
 #include <climits>
 #include <cstdlib>
 #include <cstring>
@@ -7,8 +9,11 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h>
+#include <vector>
 
 using namespace std;
+
+const unsigned int T = thread::hardware_concurrency();
 
 template <typename F>
 unsigned long
@@ -27,7 +32,7 @@ void
 time_nums_to_str(int id, F f, G g)
 {
     g();
-    constexpr int max_iters = 1024;
+    constexpr int max_iters = 256;
     constexpr int max_seeds = 1024;
     constexpr int max_rands = 256;
     uint64_t r[max_seeds][max_rands];
@@ -38,17 +43,40 @@ time_nums_to_str(int id, F f, G g)
         }
     }
 
-    printf("%d: %f\n", id, (double)get_time([&] () {
-        char buf[20 * max_rands + 1];
-        for (int i = 0; i < max_iters; ++i) {
-            for (int j = 0; j < max_seeds; ++j) {
-                volatile unsigned int len = f(r[j], max_rands, buf);
-                (void)len;
-            }
-        }
-        volatile char c = buf[0];
-        (void)c;
-    }) / 1000000);
+    vector<thread> threads (T);
+    vector<unsigned long> times (T);
+    atomic<bool> start (false);
+
+    for (unsigned int i = 0; i < T; ++i) {
+        threads[i] = thread([&] (unsigned int i) {
+            while (!start) { }
+            times[i] = get_time([&] () {
+                unsigned char str[4096];
+                unsigned char hash[SHA256_DIGEST_LENGTH];
+                memset(str, rand() % UCHAR_MAX, sizeof(str));
+                char buf[20 * max_rands + 1];
+                for (int i = 0; i < max_iters; ++i) {
+                    for (int j = 0; j < max_seeds; ++j) {
+                        SHA256(str, 1024, hash);
+                        SHA256(str, 1024, hash);
+                        volatile unsigned int len = f(r[j], max_rands, buf);
+                        (void)len;
+                    }
+                }
+                volatile char c = buf[0];
+                (void)c;
+            });
+        }, i);
+    }
+
+    usleep(1000);
+    start = true;
+    for (unsigned int i = 0; i < T; ++i) {
+        threads[i].join();
+    }
+
+    sort(times.begin(), times.end());
+    printf("%d: %f\n", id, (double)times[T / 2] / 1000000);
 }
 
 unsigned int nums_to_str0(const uint64_t *, unsigned int, char *);
@@ -85,18 +113,6 @@ time_nums_to_str()
 int
 main()
 {
-    for (unsigned int i = 0; i < thread::hardware_concurrency() - 1; ++i) {
-        thread t ([] (unsigned char r) {
-            unsigned char buf[1024];
-            unsigned char hash[SHA256_DIGEST_LENGTH];
-            memset(buf, r, sizeof(buf));
-            for (;;) {
-                SHA256(buf, 1024, hash);
-            }
-        }, rand() % UCHAR_MAX);
-        t.detach();
-    }
-    usleep(1000);
     for (int i = 0; i < 3; ++i) {
         get_time([](){});
     }
