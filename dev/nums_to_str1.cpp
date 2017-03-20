@@ -51,125 +51,105 @@ num_to_str_align(uint64_t n, char *buf)
     }
 }
 
-inline unsigned int
-num_to_str(uint64_t n, char *buf)
+unsigned int
+num_to_str1(uint64_t n, char *buf)
 {
     if (n >= 10000000000000000000lu) {
-        buf[20] = '\0';
         num_to_str_align<20>(n, buf);
         return 20;
     }
 
     if (n >= 1000000000000000000lu) {
-        buf[19] = '\0';
         num_to_str_align<19>(n, buf);
         return 19;
     }
 
     if (n >= 100000000000000000lu) {
-        buf[18] = '\0';
         num_to_str_align<18>(n, buf);
         return 18;
     }
 
     if (n >= 10000000000000000lu) {
-        buf[17] = '\0';
         num_to_str_align<17>(n, buf);
         return 17;
     }
 
     if (n >= 1000000000000000lu) {
-        buf[16] = '\0';
         num_to_str_align<16>(n, buf);
         return 16;
     }
 
     if (n >= 100000000000000lu) {
-        buf[15] = '\0';
         num_to_str_align<15>(n, buf);
         return 15;
     }
 
     if (n >= 10000000000000lu) {
-        buf[14] = '\0';
         num_to_str_align<14>(n, buf);
         return 14;
     }
 
     if (n >= 1000000000000lu) {
-        buf[13] = '\0';
         num_to_str_align<13>(n, buf);
         return 13;
     }
 
     if (n >= 100000000000lu) {
-        buf[12] = '\0';
         num_to_str_align<12>(n, buf);
         return 12;
     }
 
     if (n >= 10000000000lu) {
-        buf[11] = '\0';
         num_to_str_align<11>(n, buf);
         return 11;
     }
 
     if (n >= 1000000000lu) {
-        buf[10] = '\0';
         num_to_str_align<10>(n, buf);
         return 10;
     }
 
     if (n >= 100000000lu) {
-        buf[9] = '\0';
         num_to_str_align<9>(n, buf);
         return 9;
     }
 
     if (n >= 10000000lu) {
-        buf[8] = '\0';
         num_to_str_align<8>(n, buf);
         return 8;
     }
 
     if (n >= 1000000lu) {
-        buf[7] = '\0';
         num_to_str_align<7>(n, buf);
         return 7;
     }
 
     if (n >= 100000lu) {
-        buf[6] = '\0';
         num_to_str_align<6>(n, buf);
         return 6;
     }
 
     if (n >= 10000lu) {
-        buf[5] = '\0';
         num_to_str_align<5>(n, buf);
         return 5;
     }
 
     if (n >= 1000lu) {
-        buf[4] = '\0';
         num_to_str_align<4>(n, buf);
         return 4;
     }
 
     if (n >= 100lu) {
-        buf[3] = '\0';
         num_to_str_align<3>(n, buf);
         return 3;
     }
 
     if (n >= 10lu) {
-        buf[2] = '\0';
         buf[1] = n % 10 + '0';
         buf[0] = n / 10 + '0';
         return 2;
     }
 
-    buf[1] = '\0';
     buf[0] = n + '0';
     return 1;
 }
@@ -180,8 +160,9 @@ nums_to_str1(const uint64_t * RESTRICT nums, unsigned int n,
 {
     char *p = buf;
     for (unsigned int i = 0; i < n; ++i) {
-        p += num_to_str(nums[i], p);
+        p += num_to_str1(nums[i], p);
     }
+    *p = '\0';
     return p - buf;
 }
 

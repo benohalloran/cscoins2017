@@ -87,6 +87,7 @@ unsigned int nums_to_str4(const uint64_t *, unsigned int, char *);
 unsigned int nums_to_str5(const uint64_t *, unsigned int, char *);
 unsigned int nums_to_str6(const uint64_t *, unsigned int, char *);
 unsigned int nums_to_str7(const uint64_t *, unsigned int, char *);
+unsigned int nums_to_str8(const uint64_t *, unsigned int, char *);
 void init_decimals0();
 void init_decimals1();
 void init_decimals2();
@@ -95,6 +96,7 @@ void init_decimals4();
 void init_decimals5();
 void init_decimals6();
 void init_decimals7();
+void init_decimals8();
 
 void
 time_nums_to_str()
@@ -108,6 +110,7 @@ time_nums_to_str()
     time_nums_to_str(5, nums_to_str5, init_decimals5);
     time_nums_to_str(6, nums_to_str6, init_decimals6);
     time_nums_to_str(7, nums_to_str7, init_decimals7);
+    time_nums_to_str(8, nums_to_str8, init_decimals8);
 }
 
 int

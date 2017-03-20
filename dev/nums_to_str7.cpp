@@ -13,6 +13,11 @@ static char decimals[100000][6];
     __builtin_prefetch(&decimals[k]); \
 } while (0)
 
+#define FILL_LAST(j) do { \
+    mods[m + j] = x; \
+    __builtin_prefetch(&decimals[x]); \
+} while (0)
+
 unsigned int NOINLINE
 nums_to_str7(const uint64_t * RESTRICT nums, unsigned int n,
     char * RESTRICT buf)
@@ -25,19 +30,19 @@ nums_to_str7(const uint64_t * RESTRICT nums, unsigned int n,
             FILL_NEXT(0);
             FILL_NEXT(1);
             FILL_NEXT(2);
-            FILL_NEXT(3);
+            FILL_LAST(3);
             m += 4;
         } else if (x >= 10000000000lu) {
             FILL_NEXT(0);
             FILL_NEXT(1);
-            FILL_NEXT(2);
+            FILL_LAST(2);
             m += 3;
         } else if (x >= 100000lu) {
             FILL_NEXT(0);
-            FILL_NEXT(1);
+            FILL_LAST(1);
             m += 2;
         } else {
-            FILL_NEXT(0);
+            FILL_LAST(0);
             ++m;
         }
     }
@@ -48,7 +53,7 @@ nums_to_str7(const uint64_t * RESTRICT nums, unsigned int n,
         memcpy(p, d, 5);
         p += d[5];
     }
-
+    *p = '\0';
     return p - buf;
 }
 
