@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cstring>
 
+// NOT WORKING
+
 #define RESTRICT __restrict__
 #define NOINLINE __attribute__((noinline))
 
