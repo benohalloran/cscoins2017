@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
-#include <tuple>
+#include <utility>
 #include "rapidjson/prettywriter.h"
 
 using namespace std;
@@ -9,7 +9,7 @@ using namespace rapidjson;
 
 class BaseCommand {
     public:
-        BaseCommand(string command_name, vector<tuple<string, string>> args) :
+        BaseCommand(string command_name, vector<pair<string, string>> args) :
             command_name_(command_name), args_(args) {}
 
         friend ostream& operator<<(ostream& os, const BaseCommand& bc); 
@@ -17,7 +17,7 @@ class BaseCommand {
         virtual string serialize() const; 
     private:
         string command_name_;
-        vector<tuple<string, string>> args_;
+        vector<pair<string, string>> args_;
 };
 
 class GetCurrentChallenge : public BaseCommand {

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <tuple>
+#include <utility>
 #include "rapidjson/prettywriter.h"
 #include "coinslib/commands.hpp"
 
@@ -18,8 +18,8 @@ const {
     writer.Key("args");
     writer.StartObject();
     for(auto &arg : this->args_) {
-        writer.Key(get<0>(arg).c_str());
-        writer.String(get<1>(arg).c_str());
+        writer.Key((arg.first).c_str());
+        writer.String((arg.second).c_str());
     }
     writer.EndObject();
     writer.EndObject();
