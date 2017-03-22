@@ -133,10 +133,11 @@ test_sorting(int id, F f, G g)
     constexpr int max = 1024;
     vector<uint64_t> r[max];
     for (int i = 0; i < max; ++i) {
+        r[i].reserve(max * 2);
         r[i].resize(max);
         mt19937_64 gen (rand());
         for (int j = 0; j < max; ++j) {
-            r[i][j] = gen();
+            r[i][j] = gen() & (-1lu >> (64 - BIN_SHIFT));
         }
     }
 
@@ -144,15 +145,15 @@ test_sorting(int id, F f, G g)
         vector<uint64_t> cpy (r[i]);
         sort(cpy.begin(), cpy.begin() + i, g);
         f(r[i].data(), i);
-        for (int j = 0; j < max; ++j) {
+        for (int j = 0; j < i; ++j) {
             if (cpy[j] != r[i][j]) {
-                printf("i = %d\n", i);
-                for (int j = 0; j < i; ++j) {
-                    printf("%lu ", r[i][j]);
+                printf("i = %d, j = %d\n", i, j);
+                for (int k = 0; k < i; ++k) {
+                    printf("%lu ", r[i][k]);
                 }
                 fputc('\n', stdout);
-                for (int j = 0; j < i; ++j) {
-                    printf("%lu ", cpy[j]);
+                for (int k = 0; k < i; ++k) {
+                    printf("%lu ", cpy[k]);
                 }
                 fputc('\n', stdout);
             }
@@ -163,16 +164,28 @@ test_sorting(int id, F f, G g)
 
 void fast_sort0(uint64_t *, unsigned int);
 void fast_sort1(uint64_t *, unsigned int);
+void fast_sort2(uint64_t *, unsigned int);
+void fast_sort3(uint64_t *, unsigned int);
+void fast_sort4(uint64_t *, unsigned int);
 void fast_sort_r0(uint64_t *, unsigned int);
 void fast_sort_r1(uint64_t *, unsigned int);
+void fast_sort_r2(uint64_t *, unsigned int);
+void fast_sort_r3(uint64_t *, unsigned int);
+void fast_sort_r4(uint64_t *, unsigned int);
 
 void
 test_sorting()
 {
     test_sorting(0, fast_sort0, less<uint64_t>());
     test_sorting(1, fast_sort1, less<uint64_t>());
+    test_sorting(2, fast_sort2, less<uint64_t>());
+    test_sorting(3, fast_sort3, less<uint64_t>());
+    test_sorting(4, fast_sort4, less<uint64_t>());
     test_sorting(0, fast_sort_r0, greater<uint64_t>());
     test_sorting(1, fast_sort_r1, greater<uint64_t>());
+    test_sorting(2, fast_sort_r2, greater<uint64_t>());
+    test_sorting(3, fast_sort_r3, greater<uint64_t>());
+    test_sorting(4, fast_sort_r4, greater<uint64_t>());
 }
 
 void

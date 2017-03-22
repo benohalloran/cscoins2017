@@ -1,15 +1,18 @@
+#include "solver.hpp"
+
 #include <algorithm>
 #include <atomic>
 #include <climits>
 #include <cstdlib>
 #include <cstring>
-#include <openssl/sha.h>
 #include <random>
 #include <string>
 #include <thread>
 #include <time.h>
 #include <unistd.h>
 #include <vector>
+
+#include <openssl/sha.h>
 
 using namespace std;
 
@@ -116,12 +119,14 @@ time_nums_to_str()
 
 template <typename F>
 void
-time_sorting(int id, F f, unsigned int elems, unsigned int bin_lg)
+time_sorting(int id, F f, unsigned int elem_lg, unsigned int bin_lg)
 {
-    constexpr int max_iters = 256;
+    const unsigned int elems = 1 << elem_lg;
+    const unsigned int max_iters = (1024 * 512 * elem_lg * elem_lg) / elems;
     const unsigned int n_bins = 1 << bin_lg;
-    vector<uint64_t> r[max_iters];
-    for (int i = 0; i < max_iters; ++i) {
+    vector<vector<uint64_t>> r (max_iters);
+    for (unsigned int i = 0; i < max_iters; ++i) {
+        r[i].reserve(2 * elems);
         r[i].resize(elems);
         mt19937_64 gen (rand());
         for (unsigned int j = 0; j < elems; ++j) {
@@ -144,14 +149,15 @@ time_sorting(int id, F f, unsigned int elems, unsigned int bin_lg)
             }
             while (!start) { }
             times[i] = get_time([&] () {
-                for (int i = 0; i < max_iters; ++i) {
+                for (unsigned int i = 0; i < max_iters; ++i) {
                     SHA256(str, 1024, hash);
                     SHA256(str, 1024, hash);
                     for (uint64_t k : r[i]) {
-                        bins[k >> (64 - bin_lg)].push_back(k);
+                        bins[k >> (64 - bin_lg)].push_back(k << (bin_lg - 5));
                     }
                     for (auto &bin : bins) {
                         f(bin.data(), bin.size());
+                        bin.clear();
                     }
                 }
             });
@@ -170,18 +176,24 @@ time_sorting(int id, F f, unsigned int elems, unsigned int bin_lg)
 
 void fast_sort0(uint64_t *, unsigned int);
 void fast_sort1(uint64_t *, unsigned int);
+void fast_sort2(uint64_t *, unsigned int);
+void fast_sort3(uint64_t *, unsigned int);
+void fast_sort4(uint64_t *, unsigned int);
 
 void
 time_sorting()
 {
     printf("sorting:\n");
-    for (unsigned int bin_lg = 5; bin_lg <= 7; ++bin_lg) {
+    for (unsigned int bin_lg = 5; bin_lg <= 5; ++bin_lg) {
         unsigned int bins = 1 << bin_lg;
-        for (unsigned int elem_lg = 4; elem_lg <= 10; ++elem_lg) {
+        for (unsigned int elem_lg = 7; elem_lg <= 12; ++elem_lg) {
             unsigned int elems = 1 << elem_lg;
             printf("bins = %u, elems = %u\n", bins, elems);
-            time_sorting(0, fast_sort0, elems, bin_lg);
-            time_sorting(1, fast_sort1, elems, bin_lg);
+            // time_sorting(0, fast_sort0, elem_lg, bin_lg);
+            // time_sorting(1, fast_sort1, elem_lg, bin_lg);
+            time_sorting(2, fast_sort2, elem_lg, bin_lg);
+            time_sorting(3, fast_sort3, elem_lg, bin_lg);
+            time_sorting(4, fast_sort3, elem_lg, bin_lg);
         }
     }
 }
@@ -195,6 +207,5 @@ main()
 
     // time_nums_to_str();
     time_sorting();
-
     return 0;
 }
