@@ -1,5 +1,5 @@
 CC = g++
-CPPFLAGS = -Ofast -g3 -march=native -flto -Wall -Wextra -std=gnu++14 -pthread \
+CPPFLAGS = -Ofast -g3 -march=native -flto -Wall -Wextra -std=gnu++14  -pthread \
 		   -save-temps -I ../include -DTESTING -fno-strict-aliasing
 LDFLAGS = $(CPPFLAGS) -lcrypto
 

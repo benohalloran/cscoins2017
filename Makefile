@@ -1,7 +1,7 @@
 CPP = g++
 HEADERDIR = include
 INCLUDE = -I$(HEADERDIR) -I/usr/local/include #Second option isosx openssl comand
-CPPFLAGS = -Ofast -g3 -march=native -flto -Wall -Wextra -pthread \
+CPPFLAGS = -Ofast -g3 -march=native -flto  -Wall -Wextra -pthread  \
 		   -fno-strict-aliasing $(INCLUDE)
 LDFLAGS = $(CPPFLAGS) -lcrypto -lssl -lz
 

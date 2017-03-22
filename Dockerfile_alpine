@@ -1,0 +1,8 @@
+FROM alpine:3.5
+
+
+RUN apk add --update openssl openssl-dev zlib openssh git build-base linux-headers gcc g++ libstdc++
+COPY . cscoins2017
+RUN cd cscoins2017 && git submodule update --init --recursive && make
+
+CMD cd cscoins2017 && ./client
