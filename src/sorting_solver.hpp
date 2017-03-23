@@ -111,7 +111,7 @@ sorting_solver::fill_solution_string(int type)
             uint64_t * const ptr = bins[i].ptr;
             fast_sort(ptr, len);
             for (unsigned int j = 0; j < len; ++j) {
-                cur_solution_buf += num_to_str(ptr[len + j], cur_solution_buf);
+                cur_solution_buf += num_to_str(ptr[j], cur_solution_buf);
             }
             bins[i].len = 0;
         }
@@ -121,7 +121,7 @@ sorting_solver::fill_solution_string(int type)
             uint64_t * const ptr = bins[i].ptr;
             fast_sort(ptr, len);
             for (unsigned int j = len - 1; j < len; --j) {
-                cur_solution_buf += num_to_str(ptr[len + j], cur_solution_buf);
+                cur_solution_buf += num_to_str(ptr[j], cur_solution_buf);
             }
             bins[i].len = 0;
         }
