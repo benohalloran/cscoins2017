@@ -199,7 +199,7 @@ time_sorting()
             // time_sorting(3, fast_sort3, elem_lg, bin_lg);
             // time_sorting(4, fast_sort4, elem_lg, bin_lg);
             // time_sorting(5, fast_sort5, elem_lg, bin_lg);
-            // time_sorting(6, fast_sort6, elem_lg, bin_lg);
+            time_sorting(6, fast_sort6, elem_lg, bin_lg);
             time_sorting(7, fast_sort7, elem_lg, bin_lg);
             time_sorting(8, fast_sort8, elem_lg, bin_lg);
         }
