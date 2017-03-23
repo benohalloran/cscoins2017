@@ -13,8 +13,8 @@ using namespace std;
     x##b ^= tmp ^ x##a; \
 }
 
-constexpr unsigned int AFS_N_BINS = 128;
-constexpr unsigned int AFS_BIN_SHIFT = 7;
+constexpr unsigned int AFS_N_BINS = 64;
+constexpr unsigned int AFS_BIN_SHIFT = 6;
 
 static void
 sort16(uint64_t *array)
@@ -147,69 +147,97 @@ static void (*jmp_table[17])(uint64_t *) = {
     sort9, sort10, sort11, sort12, sort13, sort14, sort15, sort16
 };
 
+template <unsigned int S>
 static void
-american_flag_sort(uint64_t * RESTRICT array, unsigned int len,
-    uint64_t * RESTRICT spare, unsigned int digit)
+american_flag_sort(uint64_t *array, unsigned int len)
 {
-    unsigned int counts[AFS_N_BINS];
-    unsigned int offsets[AFS_N_BINS + 1];
-    unsigned int next_free[AFS_N_BINS];
-    uint64_t nonempty[AFS_N_BINS / 64] = {0};
-    const unsigned int shift = BIN_SHIFT - AFS_BIN_SHIFT * digit;
+    constexpr unsigned int B = 1 << S;
+    unsigned int counts[B] = {0};
+    unsigned int offsets[B + 1];
+    unsigned int next_free[B];
+    unsigned int nonempty[B];
+    unsigned int n_nonempty = 0;
 
     for (unsigned int i = 0; i < len; ++i) {
-        const unsigned int bin = (array[i] >> shift) & (AFS_N_BINS - 1),
-              index = bin / 64;
-        const uint64_t bit = (uint64_t)1 << (bin % 64);
-        if (nonempty[index] & bit) {
-            ++counts[bin];
+        ++counts[(array[i] >> (BIN_SHIFT - S)) & (B - 1)];
+    }
+    offsets[0] = next_free[0] = 0;
+    for (unsigned int i = 0; i < B - 1; ++i) {
+        nonempty[n_nonempty] = i;
+        n_nonempty += counts[i] > 0;
+        offsets[i + 1] = next_free[i + 1] = offsets[i] + counts[i];
+    }
+    offsets[B] = len;
+    nonempty[n_nonempty] = B - 1;
+    n_nonempty += counts[B - 1] > 0;
+
+    for (unsigned int i = 0; i < len; ++i) {
+        const unsigned int bin = (array[i] >> (BIN_SHIFT - S)) & (B - 1);
+        array[len + next_free[bin]] = array[i];
+        ++next_free[bin];
+    }
+
+    memcpy(array, array + len, len * sizeof(*array));
+
+    for (unsigned int b = 0; b < n_nonempty; ++b) {
+        const unsigned int bin = nonempty[b],
+            count = counts[bin],
+            offset = offsets[bin];
+        if (count <= 16) {
+            jmp_table[count](array + offset);
         } else {
-            nonempty[index] |= bit;
-            counts[bin] = 1;
-        }
-    }
-
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < AFS_N_BINS / 64; ++i) {
-        for (uint64_t ne = nonempty[i]; ne; ne &= ne - 1) {
-            const unsigned int bin = __builtin_ctzll(ne) + i * 64;
-            offsets[bin] = next_free[bin] = index;
-            index += counts[bin];
-        }
-    }
-    offsets[AFS_N_BINS] = len;
-
-    for (unsigned int i = 0; i < len; ++i) {
-        const unsigned int bin = (array[i] >> shift) & (AFS_N_BINS - 1);
-        spare[next_free[bin]++] = array[i];
-    }
-
-    memcpy(array, spare, len * sizeof(*array));
-    if (UNLIKELY(digit == BIN_SHIFT / AFS_BIN_SHIFT)) {
-        return;
-    }
-
-    for (unsigned int i = 0; i < AFS_N_BINS / 64; ++i) {
-        for (uint64_t ne = nonempty[i]; ne; ne &= ne - 1) {
-            const unsigned int bin = __builtin_ctzll(ne) + i * 64,
-                  count = counts[bin],
-                  offset = offsets[bin];
-            if (count <= 16) {
-                jmp_table[count](array + offset);
-            } else {
-                american_flag_sort(array + offset, count, spare + offset,
-                    digit + 1);
-            }
+            sort(array + offset, array + offset + count);
         }
     }
 }
 
 void NOINLINE
-fast_sort5(uint64_t *array, unsigned int len)
+fast_sort6(uint64_t *array, unsigned int len)
 {
     if (len <= 16) {
         jmp_table[len](array);
         return;
     }
-    american_flag_sort(array, len, array + len, 1);
+
+    if (len <= 128) {
+        american_flag_sort<4>(array, len);
+        return;
+    }
+
+    if (len <= 256) {
+        american_flag_sort<5>(array, len);
+        return;
+    }
+
+    if (len <= 512) {
+        american_flag_sort<6>(array, len);
+        return;
+    }
+
+    if (len <= 1024) {
+        american_flag_sort<7>(array, len);
+        return;
+    }
+
+    if (len <= 2048) {
+        american_flag_sort<8>(array, len);
+        return;
+    }
+
+    if (len <= 4096) {
+        american_flag_sort<9>(array, len);
+        return;
+    }
+
+    if (len <= 8192) {
+        american_flag_sort<10>(array, len);
+        return;
+    }
+
+    if (len <= 16384) {
+        american_flag_sort<11>(array, len);
+        return;
+    }
+
+    american_flag_sort<12>(array, len);
 }

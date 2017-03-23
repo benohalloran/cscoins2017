@@ -180,6 +180,8 @@ void fast_sort2(uint64_t *, unsigned int);
 void fast_sort3(uint64_t *, unsigned int);
 void fast_sort4(uint64_t *, unsigned int);
 void fast_sort5(uint64_t *, unsigned int);
+void fast_sort6(uint64_t *, unsigned int);
+void fast_sort7(uint64_t *, unsigned int);
 
 void
 time_sorting()
@@ -187,15 +189,17 @@ time_sorting()
     printf("sorting:\n");
     for (unsigned int bin_lg = 4; bin_lg <= 4; ++bin_lg) {
         unsigned int bins = 1 << bin_lg;
-        for (unsigned int elem_lg = 7; elem_lg <= 12; ++elem_lg) {
+        for (unsigned int elem_lg = 12; elem_lg <= 22; ++elem_lg) {
             unsigned int elems = 1 << elem_lg;
             printf("bins = %u, elems = %u\n", bins, elems);
             // time_sorting(0, fast_sort0, elem_lg, bin_lg);
             // time_sorting(1, fast_sort1, elem_lg, bin_lg);
-            time_sorting(2, fast_sort2, elem_lg, bin_lg);
+            // time_sorting(2, fast_sort2, elem_lg, bin_lg);
             // time_sorting(3, fast_sort3, elem_lg, bin_lg);
-            time_sorting(4, fast_sort4, elem_lg, bin_lg);
-            time_sorting(5, fast_sort5, elem_lg, bin_lg);
+            // time_sorting(4, fast_sort4, elem_lg, bin_lg);
+            // time_sorting(5, fast_sort5, elem_lg, bin_lg);
+            time_sorting(6, fast_sort6, elem_lg, bin_lg);
+            time_sorting(7, fast_sort7, elem_lg, bin_lg);
         }
     }
 }

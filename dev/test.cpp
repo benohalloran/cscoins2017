@@ -168,6 +168,8 @@ void fast_sort2(uint64_t *, unsigned int);
 void fast_sort3(uint64_t *, unsigned int);
 void fast_sort4(uint64_t *, unsigned int);
 void fast_sort5(uint64_t *, unsigned int);
+void fast_sort6(uint64_t *, unsigned int);
+void fast_sort7(uint64_t *, unsigned int);
 
 void
 test_sorting()
@@ -178,6 +180,8 @@ test_sorting()
     test_sorting(3, fast_sort3);
     test_sorting(4, fast_sort4);
     test_sorting(5, fast_sort5);
+    test_sorting(6, fast_sort6);
+    test_sorting(7, fast_sort6);
 }
 
 void
