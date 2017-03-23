@@ -153,7 +153,7 @@ time_sorting(int id, F f, unsigned int elem_lg, unsigned int bin_lg)
                     SHA256(str, 1024, hash);
                     SHA256(str, 1024, hash);
                     for (uint64_t k : r[i]) {
-                        bins[k >> (64 - bin_lg)].push_back(k << (bin_lg - 4));
+                        bins[k >> (64 - bin_lg)].push_back(k);
                     }
                     for (auto &bin : bins) {
                         f(bin.data(), bin.size());
@@ -179,6 +179,7 @@ void fast_sort1(uint64_t *, unsigned int);
 void fast_sort2(uint64_t *, unsigned int);
 void fast_sort3(uint64_t *, unsigned int);
 void fast_sort4(uint64_t *, unsigned int);
+void fast_sort5(uint64_t *, unsigned int);
 
 void
 time_sorting()
@@ -194,6 +195,7 @@ time_sorting()
             time_sorting(2, fast_sort2, elem_lg, bin_lg);
             // time_sorting(3, fast_sort3, elem_lg, bin_lg);
             time_sorting(4, fast_sort4, elem_lg, bin_lg);
+            time_sorting(5, fast_sort5, elem_lg, bin_lg);
         }
     }
 }

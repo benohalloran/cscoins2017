@@ -152,28 +152,32 @@ american_flag_sort(uint64_t * RESTRICT array, unsigned int len,
     uint64_t * RESTRICT spare, unsigned int digit)
 {
     unsigned int counts[AFS_N_BINS];
-    unsigned int offsets[AFS_N_BINS];
+    unsigned int offsets[AFS_N_BINS + 1];
     unsigned int next_free[AFS_N_BINS];
-    uint64_t nonempty = 0;
+    uint64_t nonempty[AFS_N_BINS / 64] = {0};
     const unsigned int shift = BIN_SHIFT - AFS_BIN_SHIFT * digit;
 
     for (unsigned int i = 0; i < len; ++i) {
-        const unsigned int bin = (array[i] >> shift) & (AFS_N_BINS - 1);
-        const uint64_t bit = (uint64_t)1 << bin;
-        if (nonempty & bit) {
+        const unsigned int bin = (array[i] >> shift) & (AFS_N_BINS - 1),
+              index = bin / 64;
+        const uint64_t bit = (uint64_t)1 << (bin % 64);
+        if (nonempty[index] & bit) {
             ++counts[bin];
         } else {
-            nonempty |= (uint64_t)1 << bin;
+            nonempty[index] |= bit;
             counts[bin] = 1;
         }
     }
 
     unsigned int index = 0;
-    for (uint64_t ne = nonempty; ne; ne &= ne - 1) {
-        const unsigned int bin = __builtin_ctzll(ne);
-        offsets[bin] = next_free[bin] = index;
-        index += counts[bin];
+    for (unsigned int i = 0; i < AFS_N_BINS / 64; ++i) {
+        for (uint64_t ne = nonempty[i]; ne; ne &= ne - 1) {
+            const unsigned int bin = __builtin_ctzll(ne) + i * 64;
+            offsets[bin] = next_free[bin] = index;
+            index += counts[bin];
+        }
     }
+    offsets[AFS_N_BINS] = len;
 
     for (unsigned int i = 0; i < len; ++i) {
         const unsigned int bin = (array[i] >> shift) & (AFS_N_BINS - 1);
@@ -185,21 +189,23 @@ american_flag_sort(uint64_t * RESTRICT array, unsigned int len,
         return;
     }
 
-    for (uint64_t ne = nonempty; ne; ne &= ne - 1) {
-        const unsigned int bin = __builtin_ctzll(ne),
-              count = counts[bin],
-              offset = offsets[bin];
-        if (count <= 16) {
-            jmp_table[count](array + offset);
-        } else {
-            american_flag_sort(array + offset, count, spare + offset,
-                digit + 1);
+    for (unsigned int i = 0; i < AFS_N_BINS / 64; ++i) {
+        for (uint64_t ne = nonempty[i]; ne; ne &= ne - 1) {
+            const unsigned int bin = __builtin_ctzll(ne) + i * 64,
+                  count = counts[bin],
+                  offset = offsets[bin];
+            if (count <= 16) {
+                jmp_table[count](array + offset);
+            } else {
+                american_flag_sort(array + offset, count, spare + offset,
+                    digit + 1);
+            }
         }
     }
 }
 
 void NOINLINE
-fast_sort2(uint64_t *array, unsigned int len)
+fast_sort5(uint64_t *array, unsigned int len)
 {
     if (len <= 16) {
         jmp_table[len](array);
