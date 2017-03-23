@@ -12,6 +12,11 @@
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 
+#ifndef TEAMS
+#define TEAMS 1
+#define TEAM_ID 0
+#endif
+
 static_assert(sizeof(long) == 8, "long too small");
 
 constexpr unsigned int N_BINS = 32;
