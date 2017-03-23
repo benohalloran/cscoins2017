@@ -193,7 +193,7 @@ time_sorting()
             // time_sorting(1, fast_sort1, elem_lg, bin_lg);
             time_sorting(2, fast_sort2, elem_lg, bin_lg);
             time_sorting(3, fast_sort3, elem_lg, bin_lg);
-            time_sorting(4, fast_sort3, elem_lg, bin_lg);
+            time_sorting(4, fast_sort4, elem_lg, bin_lg);
         }
     }
 }
