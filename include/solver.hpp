@@ -19,8 +19,8 @@
 
 static_assert(sizeof(long) == 8, "long too small");
 
-constexpr unsigned int N_BINS = 32;
-constexpr unsigned int BIN_SHIFT = 59;
+constexpr unsigned int N_BINS = 16;
+constexpr unsigned int BIN_SHIFT = 60;
 
 static_assert((-1ul >> BIN_SHIFT) + 1 == N_BINS, "invalid bins");
 

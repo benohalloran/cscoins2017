@@ -125,12 +125,12 @@ test_sha256()
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
 }
 
-template <typename F, typename G>
+template <typename F>
 void
-test_sorting(int id, F f, G g)
+test_sorting(int id, F f)
 {
     printf("Testing sorting %d\n", id);
-    constexpr int max = 1024;
+    constexpr int max = 4096;
     vector<uint64_t> r[max];
     for (int i = 0; i < max; ++i) {
         r[i].reserve(max * 2);
@@ -143,7 +143,7 @@ test_sorting(int id, F f, G g)
 
     for (int i = 0; i < max; ++i) {
         vector<uint64_t> cpy (r[i]);
-        sort(cpy.begin(), cpy.begin() + i, g);
+        sort(cpy.begin(), cpy.begin() + i);
         f(r[i].data(), i);
         for (int j = 0; j < i; ++j) {
             if (cpy[j] != r[i][j]) {
@@ -167,25 +167,15 @@ void fast_sort1(uint64_t *, unsigned int);
 void fast_sort2(uint64_t *, unsigned int);
 void fast_sort3(uint64_t *, unsigned int);
 void fast_sort4(uint64_t *, unsigned int);
-void fast_sort_r0(uint64_t *, unsigned int);
-void fast_sort_r1(uint64_t *, unsigned int);
-void fast_sort_r2(uint64_t *, unsigned int);
-void fast_sort_r3(uint64_t *, unsigned int);
-void fast_sort_r4(uint64_t *, unsigned int);
 
 void
 test_sorting()
 {
-    test_sorting(0, fast_sort0, less<uint64_t>());
-    test_sorting(1, fast_sort1, less<uint64_t>());
-    test_sorting(2, fast_sort2, less<uint64_t>());
-    test_sorting(3, fast_sort3, less<uint64_t>());
-    test_sorting(4, fast_sort4, less<uint64_t>());
-    test_sorting(0, fast_sort_r0, greater<uint64_t>());
-    test_sorting(1, fast_sort_r1, greater<uint64_t>());
-    test_sorting(2, fast_sort_r2, greater<uint64_t>());
-    test_sorting(3, fast_sort_r3, greater<uint64_t>());
-    test_sorting(4, fast_sort_r4, greater<uint64_t>());
+    test_sorting(0, fast_sort0);
+    test_sorting(1, fast_sort1);
+    test_sorting(2, fast_sort2);
+    test_sorting(3, fast_sort3);
+    test_sorting(4, fast_sort4);
 }
 
 void
