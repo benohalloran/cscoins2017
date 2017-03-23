@@ -7,16 +7,24 @@
 
 using namespace std;
 
+unsigned int
+num_to_str0(uint64_t n, char *buf)
+{
+    string s = to_string(n);
+    memcpy(buf, s.c_str(), s.size());
+    return s.size();
+}
+
 unsigned int NOINLINE
 nums_to_str0(const uint64_t * RESTRICT nums, unsigned int n,
     char * RESTRICT buf)
 {
-    string s;
+    char *p = buf;
     for (unsigned int i = 0; i < n; ++i) {
-        s += to_string(nums[i]);
+        p += num_to_str0(nums[i], p);
     }
-    memcpy(buf, s.c_str(), s.size());
-    return s.size();
+    *p = '\0';
+    return p - buf;
 }
 
 void

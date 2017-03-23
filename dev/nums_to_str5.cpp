@@ -1,6 +1,8 @@
 #include <cstdint>
 #include <cstring>
 
+// NOT WORKING
+
 #define RESTRICT __restrict__
 #define NOINLINE __attribute__((noinline))
 
@@ -13,6 +15,11 @@ static char decimals[1000000][7];
     __builtin_prefetch(&decimals[k]); \
 } while (0)
 
+#define FILL_LAST(j) do { \
+    mods[m + j] = x; \
+    __builtin_prefetch(&decimals[x]); \
+} while (0)
+
 unsigned int NOINLINE
 nums_to_str5(const uint64_t * RESTRICT nums, unsigned int n,
     char * RESTRICT buf)
@@ -22,22 +29,22 @@ nums_to_str5(const uint64_t * RESTRICT nums, unsigned int n,
     for (unsigned int i = 0; i < n; ++i) {
         uint64_t x = nums[i];
         if (x >= 1000000000000000000lu) {
-            FILL_NEXT(0);
-            FILL_NEXT(1);
-            FILL_NEXT(2);
             FILL_NEXT(3);
+            FILL_NEXT(2);
+            FILL_NEXT(1);
+            FILL_LAST(0);
             m += 4;
         } else if (x >= 1000000000000lu) {
-            FILL_NEXT(0);
-            FILL_NEXT(1);
             FILL_NEXT(2);
+            FILL_NEXT(1);
+            FILL_LAST(0);
             m += 3;
         } else if (x >= 1000000lu) {
-            FILL_NEXT(0);
             FILL_NEXT(1);
+            FILL_LAST(0);
             m += 2;
         } else {
-            FILL_NEXT(0);
+            FILL_LAST(0);
             ++m;
         }
     }
@@ -48,7 +55,7 @@ nums_to_str5(const uint64_t * RESTRICT nums, unsigned int n,
         memcpy(p, d, 6);
         p += d[6];
     }
-
+    *p = '\0';
     return p - buf;
 }
 

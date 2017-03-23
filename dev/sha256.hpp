@@ -1,7 +1,3 @@
-#ifndef SOLVER_CPP_
-#error "cannot be included"
-#endif
-
 #include <cassert>
 #include <cstdint>
 #include <cstring>

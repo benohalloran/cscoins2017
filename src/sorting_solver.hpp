@@ -11,17 +11,21 @@ struct sorting_solver {
     sorting_solver(sorting_solver &&);
     sorting_solver(unsigned int);
     void loop();
-    void solve(const challenge &);
 
     thread t;
-    mt19937_64 gen;
-    bin bins[N_BINS];
     atomic<bool> should_end;
+
+private:
+    void solve(const challenge &);
+    void do_realloc(unsigned int);
+    void fill_bins(uint64_t, unsigned int);
+    unsigned int fill_solution_string(int);
+    void submit_solution(int, unsigned long, const buffer<32> &);
+
+    bin bins[N_BINS];
     char *solution_buf;
-    unsigned char *hash;
     unsigned int solution_buf_len;
     unsigned int t_id;
-    unsigned char mem[32 + 8];
 };
 
 sorting_solver::sorting_solver(sorting_solver &&s)
@@ -33,22 +37,21 @@ sorting_solver::sorting_solver(sorting_solver &&s)
 sorting_solver::sorting_solver(unsigned int k)
 {
     for (unsigned int i = 0; i < N_BINS; ++i) {
-        bins[i].ptr = (uint64_t *)malloc(1024 * sizeof(*bins[i].ptr));
-        assert(bins[i].ptr != NULL);
-        bins[i].len = 0;
-        bins[i].cap = 1024;
+        bins[i].ptr = NULL;
+        bins[i].cap = 0;
     }
+    solution_buf = NULL;
+    solution_buf_len = 0;
+    do_realloc(1024);
     should_end = false;
-    solution_buf = (char *)malloc((1024 * 20 + 1) * sizeof(*solution_buf));
-    solution_buf_len = 1024 * 20 + 1;
-    assert(solution_buf != NULL);
-    hash = mem + 8 - (size_t)mem % 8;
     t_id = k;
 }
 
-void sorting_solver::loop()
+void
+sorting_solver::loop()
 {
     set_affinity(t_id);
+    ++ready;
 
     for (;;) {
         challenge c;
@@ -66,71 +69,110 @@ void sorting_solver::loop()
     }
 }
 
-void sorting_solver::solve(const challenge &c)
+void
+sorting_solver::do_realloc(unsigned int n)
 {
-    if (solution_buf_len < c.n * 20 + 1) {
-        solution_buf_len = c.n * 20 + 1;
+    if (solution_buf_len < n * 20 + 8) {
+        solution_buf_len = n * 20 + 8;
         solution_buf = (char *)realloc(solution_buf,
             solution_buf_len * sizeof(*solution_buf));
         assert(solution_buf != NULL);
     }
-    char seed_str[64 + 20 + 1];
-    strcpy(seed_str, c.prev_hash);
     for (unsigned int i = 0; i < N_BINS; ++i) {
-        if (bins[i].cap < c.n) {
-            bins[i].ptr = (uint64_t *)realloc(bins[i].ptr, c.n * sizeof(*bins[i].ptr));
+        if (bins[i].cap < 2 * n) {
+            bins[i].ptr = (uint64_t *)realloc(bins[i].ptr, 2 * n *
+                sizeof(*bins[i].ptr));
             assert(bins[i].ptr != NULL);
             bins[i].len = 0;
-            bins[i].cap = c.n;
+            bins[i].cap = 2 * n;
         }
     }
-    unsigned int nonce = t_id * 10;
-    unsigned int seed_len = num_to_str(nonce, seed_str + 64) + 64;
+}
+
+void
+sorting_solver::fill_bins(uint64_t seed, unsigned int n)
+{
+    mt19937_64 gen (seed);
+    for (unsigned int i = 0; i < n; ++i) {
+        const uint64_t r = gen();
+        const unsigned int index = r >> BIN_SHIFT;
+        bins[index].ptr[bins[index].len++] = r;
+    }
+}
+
+unsigned int
+sorting_solver::fill_solution_string(int type)
+{
+    char *cur_solution_buf = solution_buf;
+
+    if (type == TYPE_SORTED_LIST) {
+        for (unsigned int i = 0; i < N_BINS; ++i) {
+            const unsigned int len = bins[i].len;
+            uint64_t * const ptr = bins[i].ptr;
+            fast_sort(ptr, len);
+            for (unsigned int j = 0; j < len; ++j) {
+                cur_solution_buf += num_to_str(ptr[j], cur_solution_buf);
+            }
+            bins[i].len = 0;
+        }
+    } else {
+        for (unsigned int i = N_BINS - 1; i < N_BINS; --i) {
+            const unsigned int len = bins[i].len;
+            uint64_t * const ptr = bins[i].ptr;
+            fast_sort(ptr, len);
+            for (unsigned int j = len - 1; j < len; --j) {
+                cur_solution_buf += num_to_str(ptr[j], cur_solution_buf);
+            }
+            bins[i].len = 0;
+        }
+    }
+
+    return cur_solution_buf - solution_buf;
+}
+
+void
+sorting_solver::submit_solution(int id, unsigned long nonce,
+    const buffer<32> &hash)
+{
+    lock_guard<mutex> lk (mtx);
+    buffer<65> str;
+
+    if (should_end) {
+        should_end = false;
+        return;
+    }
+
+    our_solution.id = id;
+    our_solution.nonce = nonce;
+    hash_str(hash, str);
+    memcpy(our_solution.hash, str.c, 65);
+    new_solution = true;
+    solution_cv.notify_one();
+}
+
+void
+sorting_solver::solve(const challenge &c)
+{
+    buffer<32> hash;
+    char seed_str[64 + 20 + 8];
+    unsigned long nonce;
+    unsigned int seed_len;
+
+    nonce = 1000 * (t_id + TEAM_ID * T + 1);
+    strcpy(seed_str, (const char *)c.prev_hash.c);
+    seed_len = num_to_str(nonce, seed_str + 64) + 64;
+    do_realloc(c.n);
 
     for (;;) {
+        unsigned int len;
+
         sha256(seed_str, seed_len, hash);
-        uint64_t seed = *(uint64_t *)hash;
-        gen.seed(seed);
-        for (unsigned int i = 0; i < c.n; ++i) {
-            uint64_t r = gen();
-            unsigned int index = r >> BIN_SHIFT;
-            bins[index].ptr[bins[index].len++] = r;
-        }
-        char *cur_solution_buf = solution_buf;
+        fill_bins(hash.l[0], c.n);
 
-        if (c.type == TYPE_SORTED_LIST) {
-            for (unsigned int i = 0; i < N_BINS; ++i) {
-                fast_sort(bins[i].ptr, bins[i].len);
-
-                for (unsigned int j = 0; j < bins[i].len; ++j) {
-                    cur_solution_buf += num_to_str(bins[i].ptr[j],
-                        cur_solution_buf);
-                }
-            }
-        } else {
-            for (unsigned int i = N_BINS - 1; i < N_BINS; --i) {
-                fast_sort(bins[i].ptr, bins[i].len);
-
-                for (unsigned int j = bins[i].len - 1; j < bins[i].len; --j) {
-                    cur_solution_buf += num_to_str(bins[i].ptr[j],
-                        cur_solution_buf);
-                }
-            }
-        }
-
-        sha256(solution_buf, cur_solution_buf - solution_buf, hash);
+        len = fill_solution_string(c.type);
+        sha256(solution_buf, len, hash);
         if (check_prefix(hash, c.prefix4, c.hash_prefix, c.hash_prefix_len)) {
-            lock_guard<mutex> lk (mtx);
-            if (should_end) {
-                should_end = false;
-                return;
-            }
-
-            our_solution.id = c.id;
-            our_solution.nonce = nonce;
-            hash_str(hash, our_solution.hash);
-            new_solution = true;
-            solution_cv.notify_one();
+            submit_solution(c.id, nonce, hash);
             return;
         }
 
@@ -138,16 +180,19 @@ void sorting_solver::solve(const challenge &c)
             should_end = false;
             return;
         }
-        for (unsigned int i = 0; i < N_BINS; ++i) {
-            bins[i].len = 0;
-        }
         ++nonce;
-        assert(nonce > 0);
-        if (seed_str[seed_len - 1] == '9') {
-            nonce += 10 * (T - 1);
-            seed_len = num_to_str(nonce, seed_str + 64) + 64;
-        } else {
+        if (seed_str[seed_len - 1] != '9') {
             ++seed_str[seed_len - 1];
+        } else if (seed_str[seed_len - 2] != '9') {
+            seed_str[seed_len - 1] = '0';
+            ++seed_str[seed_len - 2];
+        } else if (seed_str[seed_len - 3] != '9') {
+            seed_str[seed_len - 1] = '0';
+            seed_str[seed_len - 2] = '0';
+            ++seed_str[seed_len - 3];
+        } else {
+            nonce += 1000 * (T * TEAMS - 1);
+            seed_len = num_to_str(nonce, seed_str + 64) + 64;
         }
     }
 }
