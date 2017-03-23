@@ -130,9 +130,10 @@ void
 test_sorting(int id, F f)
 {
     printf("Testing sorting %d\n", id);
-    constexpr int max = 4096;
-    vector<uint64_t> r[max];
-    for (int i = 0; i < max; ++i) {
+    constexpr int max = 2048;
+    constexpr int extra = 24;
+    vector<vector<uint64_t>> r (max + extra);
+    for (int i = 0; i < max + extra; ++i) {
         r[i].reserve(max * 2);
         r[i].resize(max);
         mt19937_64 gen (rand());
@@ -141,18 +142,28 @@ test_sorting(int id, F f)
         }
     }
 
-    for (int i = 0; i < max; ++i) {
+    for (int i = 0; i < extra; ++i) {
+        r[max + i].reserve(2 << i);
+        r[max + i].resize(1 << i);
+        mt19937_64 gen (rand());
+        for (int j = 0; j < (1 << i); ++j) {
+            r[max + i][j] = gen() & (-1lu >> (64 - BIN_SHIFT));
+        }
+    }
+
+    for (int i = 0; i < max + extra; ++i) {
         vector<uint64_t> cpy (r[i]);
-        sort(cpy.begin(), cpy.begin() + i);
-        f(r[i].data(), i);
-        for (int j = 0; j < i; ++j) {
+        size_t len = i < max ? i : 1 << (i - max);
+        sort(cpy.begin(), cpy.begin() + len);
+        f(r[i].data(), len);
+        for (unsigned int j = 0; j < len; ++j) {
             if (cpy[j] != r[i][j]) {
                 printf("i = %d, j = %d\n", i, j);
-                for (int k = 0; k < i; ++k) {
+                for (unsigned int k = 0; k < len; ++k) {
                     printf("%lu ", r[i][k]);
                 }
                 fputc('\n', stdout);
-                for (int k = 0; k < i; ++k) {
+                for (unsigned int k = 0; k < len; ++k) {
                     printf("%lu ", cpy[k]);
                 }
                 fputc('\n', stdout);
