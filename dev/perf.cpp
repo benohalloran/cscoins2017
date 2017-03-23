@@ -122,7 +122,7 @@ void
 time_sorting(int id, F f, unsigned int elem_lg, unsigned int bin_lg)
 {
     const unsigned int elems = 1 << elem_lg;
-    const unsigned int max_iters = (1024 * 512 * elem_lg * elem_lg) / elems;
+    const unsigned int max_iters = (1024u * 4096 * elem_lg) / elems;
     const unsigned int n_bins = 1 << bin_lg;
     vector<vector<uint64_t>> r (max_iters);
     for (unsigned int i = 0; i < max_iters; ++i) {
@@ -182,6 +182,7 @@ void fast_sort4(uint64_t *, unsigned int);
 void fast_sort5(uint64_t *, unsigned int);
 void fast_sort6(uint64_t *, unsigned int);
 void fast_sort7(uint64_t *, unsigned int);
+void fast_sort8(uint64_t *, unsigned int);
 
 void
 time_sorting()
@@ -189,7 +190,7 @@ time_sorting()
     printf("sorting:\n");
     for (unsigned int bin_lg = 4; bin_lg <= 4; ++bin_lg) {
         unsigned int bins = 1 << bin_lg;
-        for (unsigned int elem_lg = 12; elem_lg <= 22; ++elem_lg) {
+        for (unsigned int elem_lg = 14; elem_lg <= 20; ++elem_lg) {
             unsigned int elems = 1 << elem_lg;
             printf("bins = %u, elems = %u\n", bins, elems);
             // time_sorting(0, fast_sort0, elem_lg, bin_lg);
@@ -198,8 +199,9 @@ time_sorting()
             // time_sorting(3, fast_sort3, elem_lg, bin_lg);
             // time_sorting(4, fast_sort4, elem_lg, bin_lg);
             // time_sorting(5, fast_sort5, elem_lg, bin_lg);
-            time_sorting(6, fast_sort6, elem_lg, bin_lg);
+            // time_sorting(6, fast_sort6, elem_lg, bin_lg);
             time_sorting(7, fast_sort7, elem_lg, bin_lg);
+            time_sorting(8, fast_sort8, elem_lg, bin_lg);
         }
     }
 }
