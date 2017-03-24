@@ -90,7 +90,10 @@ solve(const char *json)
         break;
 
     case TYPE_SHORTEST_PATH:
-        assert(0);
+        end_all_solvers();
+        our_solution.id = -1;
+        our_solution.nonce = -1lu;
+        return our_solution;
         new_path_challenge = T;
         break;
     }

@@ -355,6 +355,9 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         } else if ( ci  ) {
             cout << "solving challenge" << endl;
             solution s = solve(string(message, length).c_str());
+            if (s.id == -1 && s.nonce == -1lu) {
+                return;
+            }
             auto submission = Submission(this->wallet_id, to_string(s.nonce));
             std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
             std::cout << submission << std::endl;
