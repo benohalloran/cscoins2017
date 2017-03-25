@@ -2,6 +2,7 @@
 #include <iostream>
 #include <uWS/uWS.h>
 #include <openssl/rsa.h>
+#include <atomic>  
 
 using namespace std;
 
@@ -39,6 +40,8 @@ class MinerClient : public BaseClient {
         string createTransaction(string recipient, double amount);*/
         void initWallet(string name);
     private:
+        std::atomic<bool> cooldown = false;
+        bool load_from_file;
         string wallet_name;
         string wallet_id;
         string wallet_sig;

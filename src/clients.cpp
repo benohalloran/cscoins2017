@@ -19,6 +19,11 @@
 #include "rapidjson/pointer.h"
 #include <cassert>
 #include <regex>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <future>
+#include <atomic>  
 #define ASSERT assert
 
 using std::unique_ptr;
@@ -128,13 +133,17 @@ void MinerClient::initWallet(string name) {
     string wallet_id_f((std::istreambuf_iterator<char>( ifs_wallet_id_f )), 
             std::istreambuf_iterator<char>());
 
+    cout << wallet_sig_f << endl;
+    cout << wallet_id_f << endl;
+    cout << public_key_f << endl;
+    cout << private_key_f << endl;
 
-
-    if( wallet_id_f != "" && wallet_sig_f != "" && private_key_f != "" && public_key_f != "") {
+    if( !wallet_id_f.empty()  && !wallet_sig_f.empty()  &&  !private_key_f.empty()  && !public_key_f.empty()) {
         this->wallet_id = wallet_id_f;
         this->wallet_sig = wallet_sig_f;
         this->public_key = public_key_f;
         this->private_key = private_key_f;
+        this->load_from_file = true;
         return;
     }
 
@@ -330,10 +339,11 @@ bool MinerClient::testWalletSig() {
 
 MinerClient::MinerClient(string hostname, int port, bool ssl) {
     init_solver();
-   this->hostname_ = hostname;
+    this->hostname_ = hostname;
     this->port_ = port;
     this->ssl_ = ssl;
     this->hub = new uWS::Hub();
+    this->load_from_file = false;
     hub->onError([](void *user) {
         switch ((long) user) {
         case 1:
@@ -373,7 +383,8 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         bool wi = d.HasMember("wallet_id");
         bool ts = d.HasMember("transactions");
         bool err = d.HasMember("error");
-        
+       
+        // unregistered wallet {"type": "submission", "error": "Unregistered wallet"}
 
         if( wi  ) {
             cout << "wallet registered" << endl;
@@ -384,7 +395,31 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
             int payloadlength = strlen(payload);
             ws.send(payload, payloadlength, opcode); 
             cout << "sent challenge request" << endl;
-        } else if ( ci  ) {
+        } else if (err) {
+            if (d["error"] == "Unregistered wallet") {
+                uWS::OpCode opcode = uWS::OpCode::TEXT;
+                string name = this->wallet_name;
+                string signature = this->wallet_sig;
+                string key = this->public_key;
+                RegisterWallet registerWallet = RegisterWallet(name, key, signature);
+                string register_command = registerWallet.serialize();
+        
+                const char *payload_register = register_command.c_str();
+                int payload_register_length = strlen(payload_register);
+
+                std::cout << "sending payload: " << payload_register << std::endl;
+                ws.send(payload_register, payload_register_length, opcode);
+
+            } else if (d["error"] == "Submission for this wallet on cooldown ! Too much invalid submissions") {
+                this->cooldown = std::move(true);
+                std::async(std::launch::async, [this] () {
+                        std::this_thread::sleep_for( std::chrono::seconds{1});
+                        cout << "cooldown over" << endl;
+                        this->cooldown = std::move(false);
+                });
+            }
+        
+        } else if ( ci  && !this->cooldown.load() )  {
             cout << "solving challenge" << endl;
             solution s = solve(string(message, length).c_str());
             if (s.id == -1 && s.nonce == -1lu) {
@@ -440,8 +475,18 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
             break;
         case 5:
             std::cout << "Client established a remote connection over SSL" << std::endl;
-            std::cout << "sending payload: " << payload << std::endl;
-            ws.send(payload, payloadlength, opcode);
+            if (!this->load_from_file) {
+                std::cout << "sending payload: " << payload << std::endl;
+                ws.send(payload, payloadlength, opcode);
+            } else {
+                cout << "getting current challenge" << endl;
+                auto getChallenge = GetCurrentChallenge();
+                string command2 = getChallenge.serialize();
+                const char *payload_c = command2.c_str();
+                int payloadlength_c = strlen(payload_c);
+                ws.send(payload_c, payloadlength_c, opcode); 
+                cout << "sent challenge request" << endl;
+            }
             break;
         default:
             std::cout << "FAILURE: " << ws.getUserData() << " should not connect!" << std::endl;
