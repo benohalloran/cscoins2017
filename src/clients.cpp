@@ -162,8 +162,8 @@ void MinerClient::initWallet(string name) {
             std::istreambuf_iterator<char>());
     string privkey_pem((std::istreambuf_iterator<char>(ifspem_priv)), 
             std::istreambuf_iterator<char>());
-    //cout << "pub key pem: " << pubkey_pem << endl;
-    //cout << "pub key der: " << pubkey_der << endl;
+    cout << "pub key pem: " << pubkey_pem << endl;
+    cout << "priv key pem: " << privkey_pem << endl;
 
     const int pycrypto_len = 22;
     const char *pycrypto_tags = "\x30\x81\x9f\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00\x03\x81\x8d\x00";
@@ -200,10 +200,14 @@ void MinerClient::initWallet(string name) {
     std::ofstream out("wallet.sig");
     out << wallet_sig;
     out.close();
+    cout << "Wallet Sig" << endl;
+    cout << wallet_sig << endl;
 
     std::ofstream out2("wallet_id.txt");
     out2 << wallet_id;
     out2.close();
+    cout << "Wallet id" << endl;
+    cout << wallet_id << endl;
 
     this->wallet_name = name;
     this->wallet_id = wallet_id;
