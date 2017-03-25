@@ -147,6 +147,7 @@ sorting_solver::submit_solution(int id, unsigned long nonce,
     hash_str(hash, str);
     memcpy(our_solution.hash, str.c, 65);
     new_solution = true;
+    end_all_solvers();
     solution_cv.notify_one();
 }
 
@@ -178,6 +179,7 @@ sorting_solver::solve(const challenge &c)
 
         if (UNLIKELY(should_end)) {
             should_end = false;
+            submit_solution(-1, -1lu, hash);
             return;
         }
         ++nonce;

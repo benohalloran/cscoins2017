@@ -58,6 +58,8 @@ set_affinity(int cpu)
 }
 #endif
 
+void end_all_solvers();
+
 #include "num_to_str.hpp"
 #include "sorting.hpp"
 #include "sha256.hpp"
@@ -122,6 +124,7 @@ solve(const char *json)
 void
 init_solver()
 {
+    cout << "T: " << T << endl;
     init_decimals();
     ready = 0;
     sorting_solvers.reserve(T);
