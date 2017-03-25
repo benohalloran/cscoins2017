@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <cmath>
 #include <condition_variable>
 #include <cstdio>
 #include <cstring>
@@ -27,10 +28,10 @@ using namespace std;
 const unsigned int T = thread::hardware_concurrency();
 
 struct sorting_solver;
-// struct path_solver;
+struct path_solver;
 
 vector<sorting_solver> sorting_solvers;
-// vector<path_solver> path_solvers;
+vector<path_solver> path_solvers;
 unsigned int new_sorting_challenge, new_path_challenge;
 bool new_solution;
 challenge current_challenge;
@@ -61,6 +62,7 @@ set_affinity(int cpu)
 #include "sorting.hpp"
 #include "sha256.hpp"
 #include "sorting_solver.hpp"
+#include "path_solver.hpp"
 
 void
 end_all_solvers()
@@ -68,9 +70,9 @@ end_all_solvers()
     for (auto &solver : sorting_solvers) {
         solver.should_end = true;
     }
-    // for (auto &solver : path_solvers) {
-    //     solver.should_end = true;
-    // }
+    for (auto &solver : path_solvers) {
+        solver.should_end = true;
+    }
 }
 
 }
@@ -90,10 +92,6 @@ solve(const char *json)
         break;
 
     case TYPE_SHORTEST_PATH:
-        end_all_solvers();
-        our_solution.id = -1;
-        our_solution.nonce = -1lu;
-        return our_solution;
         new_path_challenge = T;
         break;
     }
@@ -108,7 +106,6 @@ solve(const char *json)
         break;
 
     case TYPE_SHORTEST_PATH:
-        assert(0);
         path_cv.notify_all();
         break;
     }
@@ -128,20 +125,20 @@ init_solver()
     init_decimals();
     ready = 0;
     sorting_solvers.reserve(T);
-    // path_solvers.reserve(T);
+    path_solvers.reserve(T);
     for (unsigned int i = 0; i < T; ++i) {
         sorting_solvers.emplace_back(i);
-        // path_solvers.emplace_back(i);
+        path_solvers.emplace_back(i);
     }
     for (unsigned int i = 0; i < T; ++i) {
         sorting_solvers[i].t = thread([=] () {
             sorting_solvers[i].loop();
         });
         sorting_solvers[i].t.detach();
-        // path_solvers[i].t = thread([=] () {
-        //     path_solvers[i].loop();
-        // });
-        // path_solvers[i].t.detach();
+        path_solvers[i].t = thread([=] () {
+            path_solvers[i].loop();
+        });
+        path_solvers[i].t.detach();
     }
-    while (ready != T) { }
+    while (ready != 2 * T) { }
 }
