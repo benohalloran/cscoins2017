@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <streambuf>
 #include <sstream>
 #include <uWS/uWS.h>
 #include <memory>
@@ -112,25 +113,22 @@ void MinerClient::connect() {
 void MinerClient::initWallet(string name) {
     this->wallet_name = name;
     
-    string wallet_id_f = "";
-    string public_key_f = "";
-    string private_key_f = "";
-    string wallet_sig_f = "";
-    
     std::ifstream ifs_public_pem_f("rsa-public.pem");
     std::ifstream ifs_private_pem_f("rsa-private.pem");
     std::ifstream ifs_wallet_id_f("wallet_id.txt");
     std::ifstream ifs_wallet_sig_f("wallet.sig");
 
-    public_key_f((std::istreambuf_iterator<char>(ifs_public_pem_f)), 
+    string public_key_f((std::istreambuf_iterator<char>( ifs_public_pem_f )), 
             std::istreambuf_iterator<char>());
-    private_key_f((std::istreambuf_iterator<char>(ifs_private_pem_f)), 
+    string private_key_f((std::istreambuf_iterator<char>( ifs_private_pem_f )), 
             std::istreambuf_iterator<char>());
 
-    wallet_sig_f((std::istreambuf_iterator<char>( ifs_wallet_sig_f )), 
+    string wallet_sig_f((std::istreambuf_iterator<char>( ifs_wallet_sig_f )), 
             std::istreambuf_iterator<char>());
-    wallet_id_f((std::istreambuf_iterator<char>( ifs_wallet_id_f)), 
+    string wallet_id_f((std::istreambuf_iterator<char>( ifs_wallet_id_f )), 
             std::istreambuf_iterator<char>());
+
+
 
     if( wallet_id_f != "" && wallet_sig_f != "" && private_key_f != "" && public_key_f != "") {
         this->wallet_id = wallet_id_f;
@@ -374,6 +372,7 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         bool ci  = d.HasMember("challenge_id");
         bool wi = d.HasMember("wallet_id");
         bool ts = d.HasMember("transactions");
+        bool err = d.HasMember("error");
         
 
         if( wi  ) {
