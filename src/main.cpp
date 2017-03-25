@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     string hostname = "cscoins.2017.csgames.org";
     int    port     = 8989;
     bool ssl = true;
-    MinerClient client = MinerClient(hostname, port, ssl);
+    MinerClient client (hostname, port, ssl);
     cout << client << endl;
     client.initWallet("test");
     bool check = client.testWalletSig();

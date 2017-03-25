@@ -40,7 +40,7 @@ class MinerClient : public BaseClient {
         string createTransaction(string recipient, double amount);*/
         void initWallet(string name);
     private:
-        std::atomic<bool> cooldown = false;
+        std::atomic<bool> cooldown;
         bool load_from_file;
         string wallet_name;
         string wallet_id;

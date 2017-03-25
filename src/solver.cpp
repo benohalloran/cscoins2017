@@ -85,6 +85,13 @@ solve(const char *json)
     challenge c;
     parse(json, c);
 
+    if (c.type == TYPE_SHORTEST_PATH) {
+        lock_guard<mutex> lk (mtx);
+        our_solution.nonce = -1;
+        our_solution.id = -1;
+        return our_solution;
+    }
+
     mtx.lock();
     current_challenge = c;
     switch (c.type) {
