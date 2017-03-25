@@ -60,6 +60,28 @@ num_to_str(uint64_t x, char *buf)
     return len;
 }
 
+unsigned int
+num_to_str_sm(uint64_t x, char *buf)
+{
+    unsigned int len;
+    if (x < 10000lu) {
+        FILL1;
+    } else if (x < 100000000lu) {
+        FILL2;
+        len += 4;
+    } else if (x < 1000000000000lu) {
+        FILL3;
+        len += 8;
+    } else if (x < 10000000000000000lu) {
+        FILL4;
+        len += 12;
+    } else {
+        FILL5;
+        len += 16;
+    }
+    return len;
+}
+
 void
 init_decimals()
 {

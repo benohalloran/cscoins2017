@@ -268,19 +268,19 @@ shortest_path_input = """
 """
 
 def main():
-    js = json.loads(sorted_list_input)
-    previous_hash = js["last_solution_hash"]
-    n = js["parameters"]["nb_elements"]
-    prefix = js["hash_prefix"]
-
-    loop_sorted(previous_hash, prefix, n)
-
-    js = json.loads(reverse_sorted_list_input)
-    previous_hash = js["last_solution_hash"]
-    n = js["parameters"]["nb_elements"]
-    prefix = js["hash_prefix"]
-
-    loop_reverse_sorted(previous_hash, prefix, n)
+    # js = json.loads(sorted_list_input)
+    # previous_hash = js["last_solution_hash"]
+    # n = js["parameters"]["nb_elements"]
+    # prefix = js["hash_prefix"]
+    #
+    # loop_sorted(previous_hash, prefix, n)
+    #
+    # js = json.loads(reverse_sorted_list_input)
+    # previous_hash = js["last_solution_hash"]
+    # n = js["parameters"]["nb_elements"]
+    # prefix = js["hash_prefix"]
+    #
+    # loop_reverse_sorted(previous_hash, prefix, n)
 
     js = json.loads(shortest_path_input)
     previous_hash = js["last_solution_hash"]
