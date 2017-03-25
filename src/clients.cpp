@@ -110,6 +110,36 @@ void MinerClient::connect() {
 }
 
 void MinerClient::initWallet(string name) {
+    this->wallet_name = name;
+    
+    string wallet_id_f = "";
+    string public_key_f = "";
+    string private_key_f = "";
+    string wallet_sig_f = "";
+    
+    std::ifstream ifs_public_pem_f("rsa-public.pem");
+    std::ifstream ifs_private_pem_f("rsa-private.pem");
+    std::ifstream ifs_wallet_id_f("wallet_id.txt");
+    std::ifstream ifs_wallet_sig_f("wallet.sig");
+
+    public_key_f((std::istreambuf_iterator<char>(ifs_public_pem_f)), 
+            std::istreambuf_iterator<char>());
+    private_key_f((std::istreambuf_iterator<char>(ifs_private_pem_f)), 
+            std::istreambuf_iterator<char>());
+
+    wallet_sig_f((std::istreambuf_iterator<char>( ifs_wallet_sig_f )), 
+            std::istreambuf_iterator<char>());
+    wallet_id_f((std::istreambuf_iterator<char>( ifs_wallet_id_f)), 
+            std::istreambuf_iterator<char>());
+
+    if( wallet_id_f != "" && wallet_sig_f != "" && private_key_f != "" && public_key_f != "") {
+        this->wallet_id = wallet_id_f;
+        this->wallet_sig = wallet_sig_f;
+        this->public_key = public_key_f;
+        this->private_key = private_key_f;
+        return;
+    }
+
     int rc;
 
     RSA_ptr rsa(RSA_new(), ::RSA_free);
@@ -209,7 +239,6 @@ void MinerClient::initWallet(string name) {
     cout << "Wallet id" << endl;
     cout << wallet_id << endl;
 
-    this->wallet_name = name;
     this->wallet_id = wallet_id;
     this->public_key = pubkey_pem;
     this->private_key = privkey_pem;
