@@ -285,6 +285,17 @@ string MinerClient::signMessage(string message) {
     return string(ss.str());
 }
 
+void MinerClient::getCurrentChallenge(uWS::WebSocket<uWS::CLIENT> ws) {
+       uWS::OpCode opcode = uWS::OpCode::TEXT;
+       cout << "getting current challenge" << endl;
+       auto getChallenge = GetCurrentChallenge();
+       string command = getChallenge.serialize();
+       const char *payload = command.c_str();
+       int payloadlength = strlen(payload);
+       ws.send(payload, payloadlength, opcode); 
+       cout << "sent challenge request" << endl;
+}
+
 
 bool MinerClient::testWalletSig() {
 
@@ -340,6 +351,7 @@ bool MinerClient::testWalletSig() {
 MinerClient::MinerClient(string hostname, int port, bool ssl) {
     init_solver();
     this->cooldown = false;
+    this->solve_fail = false;
     this->hostname_ = hostname;
     this->port_ = port;
     this->ssl_ = ssl;
@@ -386,18 +398,12 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
         bool err = d.HasMember("error");
        
         // unregistered wallet {"type": "submission", "error": "Unregistered wallet"}
-
         if( wi  ) {
             cout << "wallet registered" << endl;
-            cout << "getting current challenge" << endl;
-            auto getChallenge = GetCurrentChallenge();
-            string command = getChallenge.serialize();
-            const char *payload = command.c_str();
-            int payloadlength = strlen(payload);
-            ws.send(payload, payloadlength, opcode); 
-            cout << "sent challenge request" << endl;
+            this->getCurrentChallenge(ws);
         } else if (err) {
-            if (d["error"] == "Unregistered wallet") {
+             cout << "Error: " << string(d["error"].GetString()) << endl;
+            if ( string(d["error"].GetString()).compare("Unregistered wallet") || !this->load_from_file ) {
                 uWS::OpCode opcode = uWS::OpCode::TEXT;
                 string name = this->wallet_name;
                 string signature = this->wallet_sig;
@@ -411,44 +417,53 @@ MinerClient::MinerClient(string hostname, int port, bool ssl) {
                 std::cout << "sending payload: " << payload_register << std::endl;
                 ws.send(payload_register, payload_register_length, opcode);
 
-            } else if (d["error"] == "Submission for this wallet on cooldown ! Too much invalid submissions") {
-                this->cooldown = std::move(true);
+            } else if (string(d["error"].GetString()).compare("Submission for this wallet on cooldown ! Too much invalid submissions") ) {
+                this->cooldown = true;
+
+                cout << "error " << d["error"].GetString() << endl;
                 std::async(std::launch::async, [this] () {
                         std::this_thread::sleep_for( std::chrono::seconds{1});
                         cout << "cooldown over" << endl;
-                        this->cooldown = std::move(false);
+                        this->cooldown = false;
                 });
             }
         
-        } else if ( ci  && !this->cooldown.load() )  {
+        } else if ( ci  && !this->cooldown.load() && !this->solve_fail )  {
+            //cout << "previous solve didn't fail" << endl;
+            //cout << "not on cool down" << endl;
+            int time_left = d["time_left"].GetInt();
             cout << "solving challenge" << endl;
             solution s = solve(string(message, length).c_str());
             if (s.id == -1 && s.nonce == -1lu) {
-                return;
+                cout << "solver failed!" << endl;
+                this->solve_fail = true;
+                cout << "waiting " << time_left << " seconds until next challenge..." << endl;
+
+                std::async(std::launch::async, [this, time_left] () {
+                        std::this_thread::sleep_for( std::chrono::seconds{time_left});
+                        this->solve_fail = false;
+                });
+
+                this->getCurrentChallenge(ws);
+    
+            } else {
+                auto submission = Submission(this->wallet_id, to_string(s.nonce));
+                std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
+                std::cout << submission << std::endl;
+                string command = submission.serialize();
+
+                const char *payload = command.c_str();
+                int payloadlength = strlen(payload);
+
+                ws.send(payload, payloadlength, opcode);
+                cout << "sent submission" << endl;
             }
-            auto submission = Submission(this->wallet_id, to_string(s.nonce));
-            std::cout << "id: " << s.id << " nonce: " << s.nonce << " hash: " << s.hash << std::endl;
-            std::cout << submission << std::endl;
-            string command = submission.serialize();
-
-            const char *payload = command.c_str();
-            int payloadlength = strlen(payload);
-
-            ws.send(payload, payloadlength, opcode);
-            cout << "sent submission" << endl;
         } else if ( ts ) {
             std::ofstream out("transactions.txt");
             out << string(message, length);
             out.close();
         } else {
-            cout << "getting current challenge" << endl;
-            auto getChallenge = GetCurrentChallenge();
-            string command = getChallenge.serialize();
-            const char *payload = command.c_str();
-            int payloadlength = strlen(payload);
-            ws.send(payload, payloadlength, opcode); 
-            cout << "sent challenge request" << endl;
-
+            this->getCurrentChallenge(ws);
         }
 
     });

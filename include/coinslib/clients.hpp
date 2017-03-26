@@ -27,6 +27,7 @@ class MinerClient : public BaseClient {
         void connect();
         string signMessage(string message);
         bool testWalletSig();
+        void getCurrentChallenge( uWS::WebSocket<uWS::CLIENT> ws );
        /* string signMessage(string message);
         string getCurrentChallenge();
         string getChallengeSolution(int challenge_id);
@@ -41,6 +42,7 @@ class MinerClient : public BaseClient {
         void initWallet(string name);
     private:
         std::atomic<bool> cooldown;
+        std::atomic<bool> solve_fail;
         bool load_from_file;
         string wallet_name;
         string wallet_id;

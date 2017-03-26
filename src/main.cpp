@@ -14,7 +14,7 @@ using namespace rapidjson;
 int main(int argc, char** argv)
 {
     cout << "Starting up client..." << endl;
-    string hostname = "cscoins.2017.csgames.org";
+    string hostname = "ec2-54-186-71-144.us-west-2.compute.amazonaws.com";//"cscoins.2017.csgames.org";
     int    port     = 8989;
     bool ssl = true;
     MinerClient client (hostname, port, ssl);

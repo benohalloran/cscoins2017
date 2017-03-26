@@ -9,3 +9,4 @@ uwebsockets/libuWS.so
 *.log
 transactions.txt
 wallet_id.txt
+dep/
